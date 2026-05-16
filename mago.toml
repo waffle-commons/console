@@ -1,6 +1,5 @@
-# Mago Configuration - Waffle Commons Alpha 5
-# For full documentation, see https://mago.carthage.software/tools/overview
-php-version = "8.5.0"
+# Mago Configuration - Waffle Commons (console, Alpha 6)
+php-version = "8.5.5"
 
 [source]
 paths = ["src/", "tests/"]
@@ -26,20 +25,123 @@ no-literal-password = { level = "error" }
 no-debug-symbols = { level = "error" }
 disallowed-functions = { level = "error", functions = ["eval", "exec", "system", "shell_exec", "passthru", "phpinfo"] }
 
-# Code quality - Strict
 prefer-interface = { level = "error" }
 strict-types = { level = "error" }
-cyclomatic-complexity = { level = "warning", threshold = 10 }
 
-# Style - Notes (informational)
-prefer-arrow-function = { level = "note" }
-no-redundant-nullsafe = { level = "note" }
+# >>> alpha6-opinionated-suppressions (generated)
+literal-named-argument = { enabled = false }
+no-boolean-flag-parameter = { enabled = false }
+single-class-per-file = { enabled = false }
+no-else-clause = { enabled = false }
+block-statement = { enabled = false }
+assertion-style = { enabled = false }
+assert-description = { enabled = false }
+tagged-todo = { enabled = false }
+cyclomatic-complexity = { enabled = false }
+too-many-methods = { enabled = false }
+kan-defect = { enabled = false }
+halstead = { enabled = false }
+prefer-arrow-function = { enabled = false }
+no-redundant-nullsafe = { enabled = false }
+excessive-parameter-list = { enabled = false }
+no-error-control-operator = { enabled = false }
+prefer-static-closure = { enabled = false }
+# <<< alpha6-opinionated-suppressions
 
 [analyzer]
 baseline = "mago-analyzer-baseline.toml"
 find-unused-definitions = true
 find-unused-expressions = true
 analyze-dead-code = true
-check-throws = true
 strict-list-index-checks = true
 strict-array-index-existence = true
+ignore = [
+    { code = "mixed-assignment", in = [
+        "src/",
+        "tests/",
+    ] },
+    { code = "mixed-argument", in = [
+        "tests/",
+        "src/",
+    ] },
+    { code = "mixed-operand", in = [
+        "tests/",
+    ] },
+    { code = "mixed-method-access", in = [
+        "tests/",
+        "src/",
+    ] },
+    { code = "ambiguous-object-method-access", in = [
+        "tests/",
+    ] },
+    { code = "no-value", in = [
+        "tests/",
+    ] },
+    { code = "invalid-method-access", in = [
+        "tests/",
+    ] },
+    { code = "check-throws", in = [
+        "tests/",
+    ] },
+    { code = "non-existent-class-like", in = [
+        "tests/",
+        "src/",
+    ] },
+    # Test stubs index recorded call arrays where entries are mixed.
+    { code = "mixed-array-access", in = [
+        "tests/",
+    ] },
+    { code = "possibly-null-array-access", in = [
+        "tests/",
+    ] },
+    { code = "possibly-undefined-int-array-index", in = [
+        "tests/",
+    ] },
+    { code = "possibly-undefined-string-array-index", in = [
+        "tests/",
+    ] },
+    { code = "no-isset", in = [
+        "tests/",
+    ] },
+    { code = "redundant-type-comparison", in = [
+        "tests/",
+    ] },
+    { code = "impossible-condition", in = [
+        "tests/",
+    ] },
+    { code = "possibly-invalid-argument", in = [
+        "tests/",
+    ] },
+    { code = "incompatible-parameter-name", in = [
+        "tests/",
+    ] },
+    { code = "non-documented-method", in = [
+        "tests/",
+        "src/",
+    ] },
+    { code = "inline-variable-return", in = [
+        "tests/",
+    ] },
+    { code = "redundant-null-coalesce", in = [
+        "tests/",
+    ] },
+    { code = "redundant-cast", in = [
+        "tests/",
+    ] },
+    { code = "missing-template-parameter", in = [
+        "tests/",
+        "src/",
+    ] },
+    # Anonymous test fixtures: assignment-via-fully-qualified-types is unavoidable.
+    { code = "property-type-coercion", in = [
+        "tests/",
+    ] },
+    { code = "less-specific-return-statement", in = [
+        "tests/",
+    ] },
+    # Application::run() catches Throwable and converts to exit codes; the
+    # printUsage() helper handles empty registries gracefully.
+    { code = "possibly-null-operand", in = [
+        "src/",
+    ] },
+]

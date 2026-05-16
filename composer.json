@@ -23,7 +23,7 @@
     "minimum-stability": "stable",
     "require": {
         "php": "^8.5",
-        "waffle-commons/contracts": "self.version"
+        "waffle-commons/contracts": "^0.1.0-alpha6"
     },
     "require-dev": {
         "phpunit/phpunit": "^12.0",
