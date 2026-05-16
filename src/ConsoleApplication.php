@@ -45,7 +45,7 @@ final class ConsoleApplication implements ConsoleApplicationInterface
     ) {
         $rawArgv = $argv ?? $_SERVER['argv'] ?? [];
         // Drop argv[0] (the script path) — leaves [command-name, ...args/options].
-        $tail = is_array($rawArgv) ? array_slice($rawArgv, 1) : [];
+        $tail = array_slice($rawArgv, 1);
         $this->argv = array_values(array_filter($tail, 'is_string'));
     }
 

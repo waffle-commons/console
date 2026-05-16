@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Waffle\Commons\Console\Command;
 
 use ReflectionClass;
-use ReflectionMethod;
 use Waffle\Commons\Contracts\Console\Enum\ExitCode;
 use Waffle\Commons\Contracts\Console\InputInterface;
 use Waffle\Commons\Contracts\Console\OutputInterface;
@@ -138,7 +137,6 @@ final readonly class SecurityAuditCommand extends AbstractCommand
     private function shortName(string $fqcn): string
     {
         $parts = explode('\\', $fqcn);
-        $last = end($parts);
-        return is_string($last) ? $last : $fqcn;
+        return end($parts);
     }
 }

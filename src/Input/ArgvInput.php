@@ -86,10 +86,10 @@ final class ArgvInput implements InputInterface
     #[\Override]
     public function getOption(string $name, ?string $default = null): ?string
     {
-        if (!array_key_exists($name, $this->options)) {
+        $value = $this->options[$name] ?? null;
+        if ($value === null) {
             return $default;
         }
-        $value = $this->options[$name];
         return is_string($value) ? $value : $default;
     }
 
