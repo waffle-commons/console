@@ -1,91 +1,105 @@
-# Waffle Commons - Component Template
-<img src="./images/waffle-commons_logo.png" alt="Logo Waffles Commons" style="width: 25%;" /><br />
-This repository serves as a standardized template for creating new components within the Waffle Commons ecosystem. It provides a consistent structure, tooling configuration (Composer, PHPUnit, Mago, Psalm), and CI/CD pipeline (GitHub Actions) to accelerate development and maintain quality across all packages.
+[![PHP Version Require](http://poser.pugx.org/waffle-commons/console/require/php)](https://packagist.org/packages/waffle-commons/console)
+[![PHP CI](https://github.com/waffle-commons/console/actions/workflows/main.yml/badge.svg)](https://github.com/waffle-commons/console/actions/workflows/main.yml)
+[![codecov](https://codecov.io/gh/waffle-commons/console/graph/badge.svg?token=d74ac62a-7872-4035-8b8b-bcc3af1991e0)](https://codecov.io/gh/waffle-commons/console)
+[![Latest Stable Version](http://poser.pugx.org/waffle-commons/console/v)](https://packagist.org/packages/waffle-commons/console)
+[![Latest Unstable Version](http://poser.pugx.org/waffle-commons/console/v/unstable)](https://packagist.org/packages/waffle-commons/console)
+[![Total Downloads](https://img.shields.io/packagist/dt/waffle-commons/console.svg)](https://packagist.org/packages/waffle-commons/console)
+[![Packagist License](https://img.shields.io/packagist/l/waffle-commons/console)](https://github.com/waffle-commons/console/blob/main/LICENSE.md)
 
-**Note:** Replace `YOUR_CODECOV_TOKEN_HERE` in the Codecov badge URL if you integrate Codecov. Also, replace `{COMPONENT_NAME}` placeholders in badges after running the configuration script or manually.
+Waffle Console Component
+========================
 
-## Purpose
-Using this template ensures that new components adhere to the established standards of the Waffle Commons project regarding:
-- **Directory Structure:** Standard `src/`, `tests/`, etc.
-- **Coding Standards:** Enforced via Mago (formatter, linter, analyzer) with pre-configured rules.
-- **Testing:** Setup for PHPUnit, including configuration (`phpunit.xml`), bootstrap, and coverage reporting.
-- **Static Analysis:** Configured for Psalm and Mago Analyze. 
-- **Automation:** Pre-configured GitHub Actions workflow for CI, mirroring the core framework's quality checks. 
-- **Documentation:** Standard files like this `CONTRIBUTING.md`, `LICENSE.md`, issue templates, etc. 
-- **Composer Setup:** Pre-filled `composer.json` with necessary scripts and development dependencies.
+> **Release:** `v0.1.0-beta0`
 
-## How to Use This Template
-Follow these steps precisely to create a new Waffle Commons component:
+A minimalist, zero-magic CLI runtime for the Waffle Framework (RFC-012). Commands are registered **explicitly** at boot — no auto-discovery — and resolve their dependencies through constructor injection.
 
-### 1. **Clone the Template:**
-Use this template to create a new `waffle-commons` repository.
+## 📦 Installation
 
-### 2. **Run the Configuration Script:**
-Execute the provided configuration script, passing the PascalCase component name as the first and only argument. This script will automatically replace the placeholder {COMPONENT_NAME} in file contents, filenames, and directory names.
-```shell
-# Example for 'Http' component
-./configure-component.sh Http
+```bash
+composer require waffle-commons/console
 ```
-- Carefully review the output of the script to ensure all replacements and renames were successful.
 
-### 3. **Review and Finalize `composer.json`:**
-- Open composer.json.
-- Verify the `"name"` is correct (e.g., `waffle-commons/http`). It should have been updated by the script.
-- Crucially, update the `"description"` field to accurately describe your new component's purpose. 
-- Add any specific `require` dependencies needed for this component (e.g., `psr/http-message` for the `http` component).
-- Add specific `require-dev` dependencies if needed beyond the standard template (e.g., `php-mock/php-mock-phpunit` was included, but others might be needed).
-- Verify the PSR-4 namespaces in `autoload` and `autoload-dev` were correctly updated by the script.
+## 🧱 Surface
 
-### 4. **Updates in various files:**
-- Edit this `README.md` file to describe the component.
-- Edit `.github/workflows/main.yml` to activate it.
+| Class | Role |
+| :--- | :--- |
+| `Waffle\Commons\Console\ConsoleApplication` | `final` implementation of `ConsoleApplicationInterface`. Owns the command registry and the run loop. |
+| `Waffle\Commons\Console\Command\AbstractCommand` | Base class — implements `CommandInterface` with shared helpers. |
+| `Waffle\Commons\Console\Command\CacheClearCommand` | `cache:clear` — flushes the configured `CacheInterface` backend. |
+| `Waffle\Commons\Console\Command\RouteListCommand` | `route:list` — renders the compiled route table. |
+| `Waffle\Commons\Console\Command\SecurityAuditCommand` | `security:audit` — walks controllers and prints the resolved access ladder (`#[Rule]` / `#[Voter]`). |
+| `Waffle\Commons\Console\Input\ArgvInput` | `InputInterface` implementation parsing `argv`. |
+| `Waffle\Commons\Console\Output\StreamOutput` | Default `OutputInterface` writing to `STDOUT` / `STDERR`. |
+| `Waffle\Commons\Console\Output\NullOutput` | Silent `OutputInterface` for tests / quiet runs. |
+| `Waffle\Commons\Console\Exception\ConsoleException` | Base exception (implements `ConsoleExceptionInterface`). |
+| `Waffle\Commons\Console\Exception\CommandNotFoundException` | Thrown when `find($name)` cannot resolve. |
+| `Waffle\Commons\Console\Exception\InvalidArgumentException` | Thrown on invalid CLI argument shape. |
 
-### 5. **Configure GitHub Repository Settings:**
-- **Branch Protection:** Set up branch protection rules for `main` (require status checks to pass, require PR reviews, etc.).
-- **Secrets:** Add necessary secrets (e.g., `CODECOV_TOKEN`) if applicable for CI workflows.
-- **Labels:** Ensure standard labels (`bug`, `enhancement`, `good first issue`, etc.) are created (consider copying from `waffle-commons/waffle`).
-- **Discussions:** Enable GitHub Discussions if desired for the component.
-- **Issue:** Create customized template for **Bug report** (`.github/ISSUE_TEMPLATE/bug-report.md`) and  **Feature request** (`.github/ISSUE_TEMPLATE/feature-request.md`)
-- **Pull request:** Ensure standard pull requests respect the template (`.github/PULL_REQUEST_TEMPLATE.md`)
+## 🚀 Quick start
 
-### 6. **Start Developing!**
-You can now start writing your component's code in the `src/` directory and corresponding tests in the `tests/` directory. Remember to follow the established coding standards.
+The exact signature of `ConsoleApplication::__construct`, verbatim from `src/ConsoleApplication.php`:
 
-## Development Tooling (Composer Scripts)
-This template comes with pre-configured Composer scripts for common development tasks. Run these from the root of your new component's directory:
-- **Install Dependencies:**
-    ```shell
-    composer install
-    ```
-- **Run Tests (PHPUnit):** Generates coverage reports in `var/data/phpunit-coverage/`.
-    ```shell
-    composer tests
-    ```
-- **Run Mago (Format Check, Lint, Analyze):**
-    ```shell
-    composer mago
-    ```
-    - Check Formatting Only: `composer formatter --check`
-    - Apply Formatting: `composer formatter` 
-    - Run Linter: `composer linter`
-    - Run Analyzer: `composer analyzer`
-- **Run Psalm-Taint Analysis:**
-    ```shell
-    vendor/bin/psalm --taint-analysis
-    ```
-- **Check for Dependency Vulnerabilities:**
-    ```shell
-    composer audit
-    ```
-- **Run All CI Checks Locally:** Simulates the checks run in GitHub Actions (without security checks).
-    ```shell
-    composer ci
-    ```
+```php
+public function __construct(
+    private readonly string $name = Constant::DEFAULT_APP_NAME,
+    private readonly string $version = '0.0.0',
+    private readonly OutputInterface $output = new StreamOutput(),
+    ?array $argv = null, // null → reads $_SERVER['argv']
+) { /* … */ }
+```
 
-## Contributing
-While this repository is a template, contributions to the template itself (improving tooling, structure, CI) are welcome via Pull Requests to the `waffle-commons/component-template` repository.
+And the run loop:
 
-For contributions to components created from this template, please refer to the main and the specific `CONTRIBUTING.md` within that component's repository.
+```php
+use Waffle\Commons\Console\ConsoleApplication;
+use Waffle\Commons\Console\Command\CacheClearCommand;
+use Waffle\Commons\Console\Command\RouteListCommand;
 
-## License
-This template, and components created from it by default, are licensed under the MIT License. See the file for details.
+$app = new ConsoleApplication(name: 'Waffle', version: '0.1.0-beta0');
+
+$app->add(new CacheClearCommand($cache));
+$app->add(new RouteListCommand($router));
+
+exit($app->run()); // argv read from constructor, returns int exit code
+```
+
+## 🪜 Public API
+
+```php
+final class ConsoleApplication implements ConsoleApplicationInterface
+{
+    public function getName(): string;
+    public function getVersion(): string;
+    public function add(CommandInterface $command): void;
+    public function has(string $name): bool;
+    public function find(string $name): CommandInterface;  // throws CommandNotFoundException
+    public function all(): array;
+    public function run(): int;                            // returns ExitCode::*->value
+}
+```
+
+`run()`:
+
+1. With no arguments, prints the available-commands listing and exits with `ExitCode::USAGE`.
+2. The built-in `list` command name reprints the same listing with `ExitCode::SUCCESS`.
+3. `-v` / `-vv` / `-vvv` / `--verbose` / `--very-verbose` / `--debug` / `--quiet` flags adjust output verbosity via `OutputInterface::setVerbosity(Verbosity)`.
+4. Dispatches to the resolved command's `execute(InputInterface, OutputInterface): int`.
+5. `ConsoleExceptionInterface` and any other `Throwable` are caught and returned as `ExitCode::FAILURE`, with the message printed to stderr.
+
+## 🐘 PHP 8.5 features used
+
+- `final class ConsoleApplication`.
+- Constructor property promotion + `private readonly` on every dependency.
+- Default `OutputInterface $output = new StreamOutput()` — PHP 8.1 `new in initializers`.
+- `enum ExitCode: int` and `enum Verbosity` (from contracts) for typed exit codes / verbosity levels.
+- Typed constants via `Waffle\Commons\Contracts\Console\Constant`.
+
+## 🧪 Testing
+
+```bash
+docker exec -w /waffle-commons/console waffle-dev composer tests
+```
+
+## 📄 License
+
+MIT — see [LICENSE.md](./LICENSE.md).
