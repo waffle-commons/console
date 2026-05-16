@@ -2,12 +2,21 @@
 /**/.DS_Store
 
 # IDEs
-/.idea
-/.vscode
-/.idx
+.idea/
+.vscode/
+.idx/
+
+# Tools
+.claude/
+.devtool/
+.opencode/
+.project-memory/
+.tooling-venv/
+graphify-out/
+scripts/
 
 # Vendors
-/vendor
+vendor/
 
 # Cache
-/var
+var/
