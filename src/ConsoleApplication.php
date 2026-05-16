@@ -43,7 +43,7 @@ final class ConsoleApplication implements ConsoleApplicationInterface
         private readonly OutputInterface $output = new \Waffle\Commons\Console\Output\StreamOutput(),
         ?array $argv = null,
     ) {
-        $rawArgv = $argv ?? ($_SERVER['argv'] ?? []);
+        $rawArgv = $argv ?? $_SERVER['argv'] ?? [];
         // Drop argv[0] (the script path) — leaves [command-name, ...args/options].
         $tail = is_array($rawArgv) ? array_slice($rawArgv, 1) : [];
         $this->argv = array_values(array_filter($tail, 'is_string'));
@@ -76,10 +76,11 @@ final class ConsoleApplication implements ConsoleApplicationInterface
     #[\Override]
     public function find(string $name): CommandInterface
     {
-        if (!$this->has($name)) {
+        $command = $this->commands[$name] ?? null;
+        if ($command === null) {
             throw new CommandNotFoundException(requestedCommand: $name);
         }
-        return $this->commands[$name];
+        return $command;
     }
 
     #[\Override]
@@ -155,11 +156,7 @@ final class ConsoleApplication implements ConsoleApplicationInterface
         }
         $maxName = max(array_map('strlen', array_keys($this->commands)));
         foreach ($this->commands as $name => $command) {
-            $this->output->writeLine(sprintf(
-                '  %s  %s',
-                str_pad($name, $maxName),
-                $command->getDescription(),
-            ));
+            $this->output->writeLine(sprintf('  %s  %s', str_pad($name, $maxName), $command->getDescription()));
         }
     }
 }

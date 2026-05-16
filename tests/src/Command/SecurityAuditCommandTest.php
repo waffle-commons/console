@@ -41,22 +41,24 @@ final class SecurityAuditCommandTest extends AbstractTestCase
     public function testAllRoutesGuardedExitsSuccess(): void
     {
         $router = $this->createMock(RouterInterface::class);
-        $router->method('getRoutes')->willReturn([
-            [
-                'classname' => GuardedController::class,
-                'method' => 'read',
-                'arguments' => [],
-                'path' => '/items',
-                'name' => 'items_read',
-            ],
-            [
-                'classname' => GuardedController::class,
-                'method' => 'save',
-                'arguments' => [],
-                'path' => '/items',
-                'name' => 'items_save',
-            ],
-        ]);
+        $router
+            ->method('getRoutes')
+            ->willReturn([
+                [
+                    'classname' => GuardedController::class,
+                    'method' => 'read',
+                    'arguments' => [],
+                    'path' => '/items',
+                    'name' => 'items_read',
+                ],
+                [
+                    'classname' => GuardedController::class,
+                    'method' => 'save',
+                    'arguments' => [],
+                    'path' => '/items',
+                    'name' => 'items_save',
+                ],
+            ]);
 
         $output = new NullOutput();
         $exit = new SecurityAuditCommand($router)->execute(new ArgvInput([]), $output);
@@ -68,22 +70,24 @@ final class SecurityAuditCommandTest extends AbstractTestCase
     public function testUnguardedRouteFlippedToUsageExit(): void
     {
         $router = $this->createMock(RouterInterface::class);
-        $router->method('getRoutes')->willReturn([
-            [
-                'classname' => GuardedController::class,
-                'method' => 'read',
-                'arguments' => [],
-                'path' => '/items',
-                'name' => 'items_read',
-            ],
-            [
-                'classname' => UnguardedController::class,
-                'method' => 'unsafe',
-                'arguments' => [],
-                'path' => '/items/unsafe',
-                'name' => 'items_unsafe',
-            ],
-        ]);
+        $router
+            ->method('getRoutes')
+            ->willReturn([
+                [
+                    'classname' => GuardedController::class,
+                    'method' => 'read',
+                    'arguments' => [],
+                    'path' => '/items',
+                    'name' => 'items_read',
+                ],
+                [
+                    'classname' => UnguardedController::class,
+                    'method' => 'unsafe',
+                    'arguments' => [],
+                    'path' => '/items/unsafe',
+                    'name' => 'items_unsafe',
+                ],
+            ]);
 
         $output = new NullOutput();
         $exit = new SecurityAuditCommand($router)->execute(new ArgvInput([]), $output);
@@ -93,18 +97,64 @@ final class SecurityAuditCommandTest extends AbstractTestCase
         static::assertStringContainsString('UNGUARDED', $output->errors()[0]);
     }
 
+    public function testNonExistentControllerProducesUnguardedRoute(): void
+    {
+        $router = $this->createMock(RouterInterface::class);
+        $router
+            ->method('getRoutes')
+            ->willReturn([
+                [
+                    'classname' => '\\Not\\A\\Real\\Class',
+                    'method' => 'whatever',
+                    'arguments' => [],
+                    'path' => '/ghost',
+                    'name' => 'ghost_route',
+                ],
+            ]);
+
+        $output = new NullOutput();
+        $exit = new SecurityAuditCommand($router)->execute(new ArgvInput([]), $output);
+
+        // Non-existent class → no voters collected → route is flagged as unguarded.
+        static::assertSame(ExitCode::USAGE->value, $exit);
+        static::assertNotEmpty($output->errors());
+    }
+
+    public function testRouteWithMissingMethodIsTreatedAsUnguarded(): void
+    {
+        $router = $this->createMock(RouterInterface::class);
+        $router
+            ->method('getRoutes')
+            ->willReturn([
+                [
+                    'classname' => UnguardedController::class,
+                    'method' => 'methodThatDoesNotExist',
+                    'arguments' => [],
+                    'path' => '/missing',
+                    'name' => 'missing_method',
+                ],
+            ]);
+
+        $output = new NullOutput();
+        $exit = new SecurityAuditCommand($router)->execute(new ArgvInput([]), $output);
+
+        static::assertSame(ExitCode::USAGE->value, $exit);
+    }
+
     public function testCsrfRequirementIsSurfaced(): void
     {
         $router = $this->createMock(RouterInterface::class);
-        $router->method('getRoutes')->willReturn([
-            [
-                'classname' => GuardedController::class,
-                'method' => 'save',
-                'arguments' => [],
-                'path' => '/items',
-                'name' => 'items_save',
-            ],
-        ]);
+        $router
+            ->method('getRoutes')
+            ->willReturn([
+                [
+                    'classname' => GuardedController::class,
+                    'method' => 'save',
+                    'arguments' => [],
+                    'path' => '/items',
+                    'name' => 'items_save',
+                ],
+            ]);
 
         $output = new NullOutput();
         new SecurityAuditCommand($router)->execute(new ArgvInput([]), $output);

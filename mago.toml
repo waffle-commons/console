@@ -144,4 +144,18 @@ ignore = [
     { code = "possibly-null-operand", in = [
         "src/",
     ] },
+    # Test fixtures deliberately call constructors with invalid argument types
+    # to verify error-path behaviour; PHPUnit assertion helpers narrow nullable
+    # message returns away.
+    { code = "false-argument", in = [
+        "tests/",
+    ] },
+    { code = "possibly-null-argument", in = [
+        "tests/",
+    ] },
+    # Anonymous Command stubs in tests carry tracking properties beyond the
+    # CommandInterface contract; reflection-only access is intentional.
+    { code = "non-existent-property", in = [
+        "tests/",
+    ] },
 ]

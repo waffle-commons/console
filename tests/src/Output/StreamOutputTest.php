@@ -83,4 +83,23 @@ final class StreamOutputTest extends AbstractTestCase
         $this->expectException(RuntimeException::class);
         new StreamOutput(false, false); // @phpstan-ignore-line
     }
+
+    public function testWriteRespectsVerbosityThreshold(): void
+    {
+        [$out, $err] = $this->makeStreams();
+        $output = new StreamOutput($out, $err);
+        $output->setVerbosity(Verbosity::QUIET);
+
+        $output->write('quiet-drop', Verbosity::NORMAL);
+        static::assertSame('', $this->read($out));
+    }
+
+    public function testGetVerbosityReturnsConfiguredLevel(): void
+    {
+        [$out, $err] = $this->makeStreams();
+        $output = new StreamOutput($out, $err);
+        $output->setVerbosity(Verbosity::VERY_VERBOSE);
+
+        static::assertSame(Verbosity::VERY_VERBOSE, $output->getVerbosity());
+    }
 }

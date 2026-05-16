@@ -31,10 +31,25 @@ final class ConsoleApplicationTest extends AbstractTestCase
                 private int $exit,
             ) {}
 
-            public function getName(): string { return $this->name; }
-            public function getDescription(): string { return $this->description; }
-            public function getHelp(): string { return ''; }
-            public function getSynopsis(): string { return $this->name; }
+            public function getName(): string
+            {
+                return $this->name;
+            }
+
+            public function getDescription(): string
+            {
+                return $this->description;
+            }
+
+            public function getHelp(): string
+            {
+                return '';
+            }
+
+            public function getSynopsis(): string
+            {
+                return $this->name;
+            }
 
             public function execute(InputInterface $input, OutputInterface $output): int
             {
@@ -127,10 +142,25 @@ final class ConsoleApplicationTest extends AbstractTestCase
     public function testCommandThrowingThrowableProducesFailureExit(): void
     {
         $exploding = new class implements CommandInterface {
-            public function getName(): string { return 'boom'; }
-            public function getDescription(): string { return ''; }
-            public function getHelp(): string { return ''; }
-            public function getSynopsis(): string { return 'boom'; }
+            public function getName(): string
+            {
+                return 'boom';
+            }
+
+            public function getDescription(): string
+            {
+                return '';
+            }
+
+            public function getHelp(): string
+            {
+                return '';
+            }
+
+            public function getSynopsis(): string
+            {
+                return 'boom';
+            }
 
             public function execute(InputInterface $input, OutputInterface $output): int
             {

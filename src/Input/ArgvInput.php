@@ -69,10 +69,11 @@ final class ArgvInput implements InputInterface
     {
         $this->arguments = [];
         foreach ($names as $index => $name) {
-            if (!array_key_exists($index, $this->positionals)) {
+            $value = $this->positionals[$index] ?? null;
+            if ($value === null) {
                 continue;
             }
-            $this->arguments[$name] = $this->positionals[$index];
+            $this->arguments[$name] = $value;
         }
     }
 

@@ -69,12 +69,7 @@ final readonly class SecurityAuditCommand extends AbstractCommand
             $voterLabel = $voters === [] ? 'NONE' : implode(', ', $voters);
             $csrfLabel = $csrf ?? '-';
 
-            $output->writeLine(sprintf(
-                '  %s  voters=[%s]  csrf=%s',
-                $route['name'],
-                $voterLabel,
-                $csrfLabel,
-            ));
+            $output->writeLine(sprintf('  %s  voters=[%s]  csrf=%s', $route['name'], $voterLabel, $csrfLabel));
 
             if ($voters === []) {
                 $unguarded++;
@@ -88,11 +83,7 @@ final readonly class SecurityAuditCommand extends AbstractCommand
         }
 
         $output->writeLine('');
-        $output->writeLine(sprintf(
-            '%d route(s) audited, %d unguarded.',
-            count($routes),
-            $unguarded,
-        ));
+        $output->writeLine(sprintf('%d route(s) audited, %d unguarded.', count($routes), $unguarded));
 
         return $unguarded === 0 ? ExitCode::SUCCESS->value : ExitCode::USAGE->value;
     }
