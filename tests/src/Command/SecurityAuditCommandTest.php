@@ -10,6 +10,7 @@ use Waffle\Commons\Console\Command\SecurityAuditCommand;
 use Waffle\Commons\Console\Input\ArgvInput;
 use Waffle\Commons\Console\Output\NullOutput;
 use Waffle\Commons\Contracts\Console\Enum\ExitCode;
+use Waffle\Commons\Contracts\Routing\MatchedRoute;
 use Waffle\Commons\Contracts\Routing\RouterInterface;
 use WaffleTests\Commons\Console\AbstractTestCase;
 use WaffleTests\Commons\Console\Helper\GuardedController;
@@ -44,20 +45,20 @@ final class SecurityAuditCommandTest extends AbstractTestCase
         $router
             ->method('getRoutes')
             ->willReturn([
-                [
-                    'classname' => GuardedController::class,
-                    'method' => 'read',
-                    'arguments' => [],
-                    'path' => '/items',
-                    'name' => 'items_read',
-                ],
-                [
-                    'classname' => GuardedController::class,
-                    'method' => 'save',
-                    'arguments' => [],
-                    'path' => '/items',
-                    'name' => 'items_save',
-                ],
+                new MatchedRoute(
+                    className: GuardedController::class,
+                    method: 'read',
+                    arguments: [],
+                    path: '/items',
+                    name: 'items_read',
+                ),
+                new MatchedRoute(
+                    className: GuardedController::class,
+                    method: 'save',
+                    arguments: [],
+                    path: '/items',
+                    name: 'items_save',
+                ),
             ]);
 
         $output = new NullOutput();
@@ -73,20 +74,20 @@ final class SecurityAuditCommandTest extends AbstractTestCase
         $router
             ->method('getRoutes')
             ->willReturn([
-                [
-                    'classname' => GuardedController::class,
-                    'method' => 'read',
-                    'arguments' => [],
-                    'path' => '/items',
-                    'name' => 'items_read',
-                ],
-                [
-                    'classname' => UnguardedController::class,
-                    'method' => 'unsafe',
-                    'arguments' => [],
-                    'path' => '/items/unsafe',
-                    'name' => 'items_unsafe',
-                ],
+                new MatchedRoute(
+                    className: GuardedController::class,
+                    method: 'read',
+                    arguments: [],
+                    path: '/items',
+                    name: 'items_read',
+                ),
+                new MatchedRoute(
+                    className: UnguardedController::class,
+                    method: 'unsafe',
+                    arguments: [],
+                    path: '/items/unsafe',
+                    name: 'items_unsafe',
+                ),
             ]);
 
         $output = new NullOutput();
@@ -103,13 +104,14 @@ final class SecurityAuditCommandTest extends AbstractTestCase
         $router
             ->method('getRoutes')
             ->willReturn([
-                [
-                    'classname' => '\\Not\\A\\Real\\Class',
-                    'method' => 'whatever',
-                    'arguments' => [],
-                    'path' => '/ghost',
-                    'name' => 'ghost_route',
-                ],
+                new MatchedRoute(
+                    /** @phpstan-ignore-next-line  testing the non-existent-class branch on purpose */
+                    className: '\\Not\\A\\Real\\Class',
+                    method: 'whatever',
+                    arguments: [],
+                    path: '/ghost',
+                    name: 'ghost_route',
+                ),
             ]);
 
         $output = new NullOutput();
@@ -126,13 +128,13 @@ final class SecurityAuditCommandTest extends AbstractTestCase
         $router
             ->method('getRoutes')
             ->willReturn([
-                [
-                    'classname' => UnguardedController::class,
-                    'method' => 'methodThatDoesNotExist',
-                    'arguments' => [],
-                    'path' => '/missing',
-                    'name' => 'missing_method',
-                ],
+                new MatchedRoute(
+                    className: UnguardedController::class,
+                    method: 'methodThatDoesNotExist',
+                    arguments: [],
+                    path: '/missing',
+                    name: 'missing_method',
+                ),
             ]);
 
         $output = new NullOutput();
@@ -147,13 +149,13 @@ final class SecurityAuditCommandTest extends AbstractTestCase
         $router
             ->method('getRoutes')
             ->willReturn([
-                [
-                    'classname' => GuardedController::class,
-                    'method' => 'save',
-                    'arguments' => [],
-                    'path' => '/items',
-                    'name' => 'items_save',
-                ],
+                new MatchedRoute(
+                    className: GuardedController::class,
+                    method: 'save',
+                    arguments: [],
+                    path: '/items',
+                    name: 'items_save',
+                ),
             ]);
 
         $output = new NullOutput();

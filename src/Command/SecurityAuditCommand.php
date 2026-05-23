@@ -62,21 +62,21 @@ final readonly class SecurityAuditCommand extends AbstractCommand
         $output->writeLine('');
 
         foreach ($routes as $route) {
-            $voters = $this->collectVoters($route['classname'], $route['method']);
-            $csrf = $this->collectCsrfRequirement($route['classname'], $route['method']);
+            $voters = $this->collectVoters($route->className, $route->method);
+            $csrf = $this->collectCsrfRequirement($route->className, $route->method);
 
             $voterLabel = $voters === [] ? 'NONE' : implode(', ', $voters);
             $csrfLabel = $csrf ?? '-';
 
-            $output->writeLine(sprintf('  %s  voters=[%s]  csrf=%s', $route['name'], $voterLabel, $csrfLabel));
+            $output->writeLine(sprintf('  %s  voters=[%s]  csrf=%s', $route->name, $voterLabel, $csrfLabel));
 
             if ($voters === []) {
                 $unguarded++;
                 $output->writeError(sprintf(
                     'UNGUARDED ROUTE: %s (%s::%s) — no #[Voter] attribute.',
-                    $route['name'],
-                    $route['classname'],
-                    $route['method'],
+                    $route->name,
+                    $route->className,
+                    $route->method,
                 ));
             }
         }

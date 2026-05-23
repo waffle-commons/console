@@ -53,10 +53,10 @@ final readonly class RouteListCommand extends AbstractCommand
         // Compute column widths for nicer alignment.
         $widths = ['path' => 4, 'classname' => 10, 'method' => 6, 'name' => 4];
         foreach ($routes as $route) {
-            $widths['path'] = max($widths['path'], strlen($route['path']));
-            $widths['classname'] = max($widths['classname'], strlen($route['classname']));
-            $widths['method'] = max($widths['method'], strlen($route['method']));
-            $widths['name'] = max($widths['name'], strlen($route['name']));
+            $widths['path'] = max($widths['path'], strlen($route->path));
+            $widths['classname'] = max($widths['classname'], strlen($route->className));
+            $widths['method'] = max($widths['method'], strlen($route->method));
+            $widths['name'] = max($widths['name'], strlen($route->name));
         }
 
         $output->writeLine(sprintf(
@@ -70,10 +70,10 @@ final readonly class RouteListCommand extends AbstractCommand
         foreach ($routes as $route) {
             $output->writeLine(sprintf(
                 '%s  %s  %s  %s',
-                str_pad($route['path'], $widths['path']),
-                str_pad($route['classname'], $widths['classname']),
-                str_pad($route['method'], $widths['method']),
-                str_pad($route['name'], $widths['name']),
+                str_pad($route->path, $widths['path']),
+                str_pad($route->className, $widths['classname']),
+                str_pad($route->method, $widths['method']),
+                str_pad($route->name, $widths['name']),
             ));
         }
 
