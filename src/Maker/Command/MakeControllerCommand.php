@@ -24,7 +24,7 @@ final readonly class MakeControllerCommand extends AbstractMakerCommand
     #[\Override]
     public function getDescription(): string
     {
-        return 'Génère un contrôleur HTTP Waffle immutable.';
+        return 'Generates an immutable Waffle Controller.';
     }
 
     #[\Override]
@@ -34,14 +34,14 @@ final readonly class MakeControllerCommand extends AbstractMakerCommand
         $className = $input->getArgument('name');
 
         if ($className === null || trim($className) === '') {
-            throw new \InvalidArgumentException('[ERREUR] Le nom du contrôleur est requis (ex. HomeController).');
+            throw new \InvalidArgumentException('[ERROR] Controller name is required (e.g. HomeController).');
         }
 
         $route = $input->getOption('route') ?? '/';
         $priority = $input->getOption('priority') ?? '0';
         $force = $input->hasOption('force') || $input->hasOption('f');
 
-        $targetDir = $this->resolveTargetDir($input);
+        $targetDir = $this->resolveTargetDir($input, 'Controller');
         $resolution = $this->resolveNamespaceAndPath($targetDir, $className);
 
         $stub = $this->loadStub('controller');

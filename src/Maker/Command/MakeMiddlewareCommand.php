@@ -24,7 +24,7 @@ final readonly class MakeMiddlewareCommand extends AbstractMakerCommand
     #[\Override]
     public function getDescription(): string
     {
-        return 'Génère un middleware PSR-15 Waffle.';
+        return 'Generates a Waffle PSR-15 Middleware.';
     }
 
     #[\Override]
@@ -34,12 +34,12 @@ final readonly class MakeMiddlewareCommand extends AbstractMakerCommand
         $className = $input->getArgument('name');
 
         if ($className === null || trim($className) === '') {
-            throw new \InvalidArgumentException('[ERREUR] Le nom du middleware est requis (ex. AuthMiddleware).');
+            throw new \InvalidArgumentException('[ERROR] Middleware name is required (e.g. AuthMiddleware).');
         }
 
         $force = $input->hasOption('force') || $input->hasOption('f');
 
-        $targetDir = $this->resolveTargetDir($input);
+        $targetDir = $this->resolveTargetDir($input, 'Middleware');
         $resolution = $this->resolveNamespaceAndPath($targetDir, $className);
 
         $stub = $this->loadStub('middleware');

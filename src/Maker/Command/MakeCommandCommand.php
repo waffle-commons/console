@@ -24,7 +24,7 @@ final readonly class MakeCommandCommand extends AbstractMakerCommand
     #[\Override]
     public function getDescription(): string
     {
-        return 'Génère une classe de commande console Waffle.';
+        return 'Generates a Waffle console command class.';
     }
 
     #[\Override]
@@ -34,15 +34,13 @@ final readonly class MakeCommandCommand extends AbstractMakerCommand
         $className = $input->getArgument('name');
 
         if ($className === null || trim($className) === '') {
-            throw new \InvalidArgumentException(
-                '[ERREUR] Le nom de la classe de commande est requis (ex. CustomTaskCommand).',
-            );
+            throw new \InvalidArgumentException('[ERROR] Command class name is required (e.g. CustomTaskCommand).');
         }
 
         $commandName = $input->getOption('command-name') ?? 'app:custom-task';
         $force = $input->hasOption('force') || $input->hasOption('f');
 
-        $targetDir = $this->resolveTargetDir($input);
+        $targetDir = $this->resolveTargetDir($input, 'Console/Command');
         $resolution = $this->resolveNamespaceAndPath($targetDir, $className);
 
         $stub = $this->loadStub('command');

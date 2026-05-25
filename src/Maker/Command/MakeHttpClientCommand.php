@@ -24,7 +24,7 @@ final readonly class MakeHttpClientCommand extends AbstractMakerCommand
     #[\Override]
     public function getDescription(): string
     {
-        return 'Génère un client HTTP PSR-18 sécurisé.';
+        return 'Generates a secure PSR-18 HTTP Client.';
     }
 
     #[\Override]
@@ -34,13 +34,13 @@ final readonly class MakeHttpClientCommand extends AbstractMakerCommand
         $className = $input->getArgument('name');
 
         if ($className === null || trim($className) === '') {
-            throw new \InvalidArgumentException('[ERREUR] Le nom du client HTTP est requis (ex. UserApiClient).');
+            throw new \InvalidArgumentException('[ERROR] HTTP Client name is required (e.g. UserApiClient).');
         }
 
         $baseUri = $input->getOption('base-uri') ?? 'http://api.internal';
         $force = $input->hasOption('force') || $input->hasOption('f');
 
-        $targetDir = $this->resolveTargetDir($input);
+        $targetDir = $this->resolveTargetDir($input, 'Service');
         $resolution = $this->resolveNamespaceAndPath($targetDir, $className);
 
         $stub = $this->loadStub('http_client');

@@ -24,11 +24,15 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
 
     /**
      * Resolves the target absolute directory path, ensuring it is located within the monorepo.
+     * If the target is not explicitly set and resolves to a package root (with composer.json),
+     * it automatically defaults to `src/<Subfolder>`.
      */
-    protected function resolveTargetDir(InputInterface $input): string
+    protected function resolveTargetDir(InputInterface $input, string $defaultSubfolder = ''): string
     {
         $cwd = getcwd();
         $cwdStr = $cwd === false ? '.' : $cwd;
+
+        $hasTargetOption = $input->getOption('target') !== null;
         $target = (string) ($input->getOption('target') ?? $cwdStr);
         $realPath = realpath($target);
 
@@ -40,7 +44,16 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
             }
         }
 
-        return rtrim((string) $realPath, '/');
+        $resolved = rtrim((string) $realPath, '/');
+
+        if (!$hasTargetOption && file_exists($resolved . '/composer.json')) {
+            $resolved .= '/src';
+            if ($defaultSubfolder !== '') {
+                $resolved .= '/' . trim($defaultSubfolder, '/');
+            }
+        }
+
+        return $resolved;
     }
 
     /**
@@ -68,17 +81,17 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
         }
 
         if ($composerJsonPath === null) {
-            throw new \RuntimeException("composer.json introuvable dans les dossiers parents de {$targetDir}.");
+            throw new \RuntimeException("composer.json not found in parent directories of {$targetDir}.");
         }
 
         $content = file_get_contents($composerJsonPath);
         if ($content === false) {
-            throw new \RuntimeException("Impossible de lire composer.json à l'adresse : {$composerJsonPath}");
+            throw new \RuntimeException("Failed to read composer.json at: {$composerJsonPath}");
         }
 
         $composerData = json_decode($content, true);
         if (!is_array($composerData)) {
-            throw new \RuntimeException('Le format de composer.json est invalide.');
+            throw new \RuntimeException('composer.json format is invalid.');
         }
 
         $psr4 = $composerData['autoload']['psr-4'] ?? [];
@@ -129,7 +142,7 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
         }
 
         if ($resolvedNamespace === '') {
-            throw new \RuntimeException("Impossible de résoudre le namespace PSR-4 pour le dossier {$targetDir}.");
+            throw new \RuntimeException("Could not resolve PSR-4 namespace for directory {$targetDir}.");
         }
 
         return [
@@ -146,28 +159,26 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
         $dir = dirname($filepath);
         if (!is_dir($dir)) {
             if (!mkdir($dir, 0o755, true) && !is_dir($dir)) {
-                throw new \RuntimeException("Impossible de créer le répertoire : {$dir}");
+                throw new \RuntimeException("Could not create directory: {$dir}");
             }
         }
 
         if (file_exists($filepath) && !$force) {
-            throw new \RuntimeException(
-                "Le fichier cible existe déjà : {$filepath}. Utilisez --force (-f) pour l'écraser.",
-            );
+            throw new \RuntimeException("Target file already exists: {$filepath}. Use --force (-f) to overwrite.");
         }
 
         // Atomic writing using temp file and rename (Anti-OWASP A05:2021)
         $tmpFile = $filepath . '.' . uniqid('wfl', true) . '.tmp';
         if (file_put_contents($tmpFile, $content) === false) {
-            throw new \RuntimeException("Échec de l'écriture dans le fichier temporaire : {$tmpFile}");
+            throw new \RuntimeException("Failed to write to temporary file: {$tmpFile}");
         }
 
         if (!rename($tmpFile, $filepath)) {
             unlink($tmpFile);
-            throw new \RuntimeException("Échec du déplacement atomique de {$tmpFile} vers {$filepath}");
+            throw new \RuntimeException("Failed to atomically rename {$tmpFile} to {$filepath}");
         }
 
-        $output->writeLine("[SUCCÈS] Fichier généré avec succès : {$filepath}");
+        $output->writeLine("[SUCCESS] File successfully generated: {$filepath}");
     }
 
     /**
@@ -177,11 +188,11 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
     {
         $stubPath = __DIR__ . '/Stubs/' . $name . '.stub';
         if (!file_exists($stubPath)) {
-            throw new \RuntimeException("Stub introuvable : {$stubPath}");
+            throw new \RuntimeException("Stub not found: {$stubPath}");
         }
         $content = file_get_contents($stubPath);
         if ($content === false) {
-            throw new \RuntimeException("Impossible de lire le fichier de stub : {$stubPath}");
+            throw new \RuntimeException("Failed to read stub file: {$stubPath}");
         }
         return $content;
     }

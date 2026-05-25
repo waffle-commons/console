@@ -37,7 +37,7 @@ final readonly class PropertyHookGenerator
                         public string \$email {
                             set(string \$value) {
                                 if (!filter_var(\$value, FILTER_VALIDATE_EMAIL)) {
-                                    throw new ValidationException(message: sprintf('Format d\'adresse email invalide : "%s".', \$value), field: 'email');
+                                    throw new ValidationException(message: sprintf('Invalid email address format: "%s".', \$value), field: 'email');
                                 }
                                 \$this->email = strtolower(\$value);
                             }
@@ -48,7 +48,7 @@ final readonly class PropertyHookGenerator
                         public string \${$name} {
                             set(string \$value) {
                                 if (trim(\$value) === '') {
-                                    throw new ValidationException(message: 'Le champ {$name} ne peut pas être vide.', field: '{$name}');
+                                    throw new ValidationException(message: 'The field {$name} cannot be empty.', field: '{$name}');
                                 }
                                 \$this->{$name} = \$value;
                             }
@@ -59,7 +59,7 @@ final readonly class PropertyHookGenerator
                         public int \${$name} {
                             set(int \$value) {
                                 if (\$value < 0) {
-                                    throw new ValidationException(message: 'La valeur du champ {$name} doit être un entier positif.', field: '{$name}');
+                                    throw new ValidationException(message: 'The value of field {$name} must be a positive integer.', field: '{$name}');
                                 }
                                 \$this->{$name} = \$value;
                             }

@@ -221,7 +221,7 @@ final class MakerCommandsTest extends TestCase
 
         // Second write fails without force
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('existe déjà');
+        $this->expectExceptionMessage('already exists');
         $command->execute($input, $output);
     }
 
@@ -272,7 +272,28 @@ final class MakerCommandsTest extends TestCase
                 $cmd->execute($input, $output);
                 static::fail('Expected InvalidArgumentException for empty name on command ' . $cmd->getName());
             } catch (\InvalidArgumentException $e) {
-                static::assertStringContainsString('[ERREUR]', $e->getMessage());
+                static::assertStringContainsString('[ERROR]', $e->getMessage());
+            }
+        }
+    }
+
+    public function testResolveTargetDirAutoResolvesToSrcSubfolder(): void
+    {
+        $command = new MakeControllerCommand();
+        $input = new ArgvInput([
+            'TestAutoController',
+        ]);
+        $output = new NullOutput();
+
+        $cwd = getcwd();
+        chdir($this->tempDir);
+        try {
+            $exit = $command->execute($input, $output);
+            static::assertSame(ExitCode::SUCCESS->value, $exit);
+            static::assertFileExists($this->tempDir . '/src/Controller/TestAutoController.php');
+        } finally {
+            if ($cwd !== false) {
+                chdir($cwd);
             }
         }
     }
@@ -317,7 +338,7 @@ final class MakerCommandsTest extends TestCase
             $cmd->execute($input, $output);
             static::fail('Expected RuntimeException for missing composer.json');
         } catch (\RuntimeException $e) {
-            static::assertStringContainsString('composer.json introuvable', $e->getMessage());
+            static::assertStringContainsString('composer.json not found', $e->getMessage());
         } finally {
             if (is_dir($noComposerDir)) {
                 rmdir($noComposerDir);

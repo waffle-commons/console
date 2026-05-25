@@ -24,7 +24,7 @@ final readonly class MakeEventPairCommand extends AbstractMakerCommand
     #[\Override]
     public function getDescription(): string
     {
-        return 'Génère un couple d\'événement et d\'écouteur PSR-14 auto-câblés.';
+        return 'Generates a coordinated PSR-14 event and listener pair.';
     }
 
     #[\Override]
@@ -34,9 +34,7 @@ final readonly class MakeEventPairCommand extends AbstractMakerCommand
         $className = $input->getArgument('name');
 
         if ($className === null || trim($className) === '') {
-            throw new \InvalidArgumentException(
-                "[ERREUR] Le nom de base de l'événement est requis (ex. UserRegistered).",
-            );
+            throw new \InvalidArgumentException('[ERROR] Event base name is required (e.g. UserRegistered).');
         }
 
         $baseName = preg_replace('/(Event|Listener)$/', '', $className);
@@ -44,7 +42,7 @@ final readonly class MakeEventPairCommand extends AbstractMakerCommand
         $listenerName = $baseName . 'Listener';
         $force = $input->hasOption('force') || $input->hasOption('f');
 
-        $targetDir = $this->resolveTargetDir($input);
+        $targetDir = $this->resolveTargetDir($input, '');
 
         // Structure directory target logic (Event/ and Event/Listener/)
         $eventDir = $targetDir;

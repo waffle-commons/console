@@ -25,7 +25,7 @@ final readonly class MakeDtoCommand extends AbstractMakerCommand
     #[\Override]
     public function getDescription(): string
     {
-        return 'Génère un DTO final avec propriétés promues et validation par hooks.';
+        return 'Generates a final DTO with promoted properties and validation hooks.';
     }
 
     #[\Override]
@@ -44,13 +44,13 @@ final readonly class MakeDtoCommand extends AbstractMakerCommand
         $className = array_shift($positionals);
 
         if ($className === null || trim($className) === '') {
-            throw new \InvalidArgumentException('[ERREUR] Le nom du DTO est requis (ex. UserRegistrationDto).');
+            throw new \InvalidArgumentException('[ERROR] DTO name is required (e.g. UserRegistrationDto).');
         }
 
         $fields = $positionals;
         $force = $input->hasOption('force') || $input->hasOption('f');
 
-        $targetDir = $this->resolveTargetDir($input);
+        $targetDir = $this->resolveTargetDir($input, 'Dto');
         $resolution = $this->resolveNamespaceAndPath($targetDir, $className);
 
         $stub = $this->loadStub('dto');

@@ -24,7 +24,7 @@ final readonly class MakeVoterCommand extends AbstractMakerCommand
     #[\Override]
     public function getDescription(): string
     {
-        return 'Génère un voter de sécurité ABAC fail-closed.';
+        return 'Generates an ABAC security voter (defaults to fail-closed).';
     }
 
     #[\Override]
@@ -34,12 +34,12 @@ final readonly class MakeVoterCommand extends AbstractMakerCommand
         $className = $input->getArgument('name');
 
         if ($className === null || trim($className) === '') {
-            throw new \InvalidArgumentException('[ERREUR] Le nom du voter est requis (ex. ArticleVoter).');
+            throw new \InvalidArgumentException('[ERROR] Voter name is required (e.g. ArticleVoter).');
         }
 
         $force = $input->hasOption('force') || $input->hasOption('f');
 
-        $targetDir = $this->resolveTargetDir($input);
+        $targetDir = $this->resolveTargetDir($input, 'Security/Voter');
         $resolution = $this->resolveNamespaceAndPath($targetDir, $className);
 
         $stub = $this->loadStub('voter');
