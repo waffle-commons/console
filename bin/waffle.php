@@ -16,6 +16,13 @@ declare(strict_types=1);
 
 use Waffle\Commons\Console\ConsoleApplication;
 use Waffle\Commons\Console\Output\StreamOutput;
+use Waffle\Commons\Console\Maker\Command\MakeControllerCommand;
+use Waffle\Commons\Console\Maker\Command\MakeDtoCommand;
+use Waffle\Commons\Console\Maker\Command\MakeMiddlewareCommand;
+use Waffle\Commons\Console\Maker\Command\MakeVoterCommand;
+use Waffle\Commons\Console\Maker\Command\MakeHttpClientCommand;
+use Waffle\Commons\Console\Maker\Command\MakeCommandCommand;
+use Waffle\Commons\Console\Maker\Command\MakeEventPairCommand;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -25,9 +32,13 @@ $app = new ConsoleApplication(
     output: new StreamOutput(),
 );
 
-// Concrete commands (CacheClearCommand, RouteListCommand, SecurityAuditCommand)
-// require the framework's runtime dependencies (Cache, Router) which are NOT
-// available in this stand-alone bin. Skeleton/workspace shadow this file with
-// a project-specific entry that performs the bootstrap.
+// Waffle Maker (RFC-020)
+$app->add(new MakeControllerCommand());
+$app->add(new MakeDtoCommand());
+$app->add(new MakeMiddlewareCommand());
+$app->add(new MakeVoterCommand());
+$app->add(new MakeHttpClientCommand());
+$app->add(new MakeCommandCommand());
+$app->add(new MakeEventPairCommand());
 
 exit($app->run());

@@ -1,0 +1,25 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ NAMESPACE }};
+
+use Waffle\Core\BaseController;
+use Waffle\Commons\Routing\Attribute\Route;
+use Psr\Http\Message\ResponseInterface;
+
+/**
+ * Contrôleur HTTP généré par Waffle Maker.
+ */
+final class {{ CLASS_NAME }} extends BaseController
+{
+    #[Route(path: '{{ ROUTE }}', priority: {{ PRIORITY }})]
+    public function index(): ResponseInterface
+    {
+        // Votre logique métier s'insère ici
+        return $this->jsonResponse([
+            'success' => true,
+            'message' => 'Contrôleur {{ CLASS_NAME }} fonctionnel !',
+        ]);
+    }
+}

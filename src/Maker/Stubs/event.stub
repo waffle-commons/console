@@ -1,0 +1,15 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ NAMESPACE }};
+
+use Waffle\Commons\EventDispatcher\Event\AbstractStoppableEvent;
+
+/**
+ * Événement PSR-14 stoppable généré par Waffle Maker.
+ */
+final class {{ CLASS_NAME }} extends AbstractStoppableEvent
+{
+    // Déclarez vos propriétés en lecture seule et le constructeur ici.
+}

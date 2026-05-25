@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ NAMESPACE }};
+
+use Waffle\Commons\EventDispatcher\Attribute\AsEventListener;
+
+/**
+ * Écouteur d'événement PSR-14 généré par Waffle Maker.
+ */
+final readonly class {{ CLASS_NAME }}
+{
+    #[AsEventListener]
+    public function __invoke({{ EVENT_CLASS_NAME }} $event): void
+    {
+        // Votre logique de traitement de l'événement s'insère ici.
+    }
+}

@@ -1,0 +1,41 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ NAMESPACE }};
+
+use Psr\Http\Client\ClientInterface;
+use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Http\Message\ResponseInterface;
+use Waffle\Commons\Contracts\HttpClient\Exception\HttpClientExceptionInterface;
+
+/**
+ * Client HTTP PSR-18 généré par Waffle Maker.
+ * Sécurisé contre le SSRF et optimisé pour FrankenPHP.
+ */
+final readonly class {{ CLASS_NAME }}
+{
+    public function __construct(
+        private ClientInterface $client,
+        private RequestFactoryInterface $requestFactory,
+        private string $baseUri = '{{ BASE_URI }}',
+    ) {}
+
+    /**
+     * Envoie une requête HTTP GET vers l'URI de base résolue.
+     *
+     * @throws HttpClientExceptionInterface
+     */
+    public function get(string $path): ResponseInterface
+    {
+        $uri = rtrim($this->baseUri, '/') . '/' . ltrim($path, '/');
+        $request = $this->requestFactory->createRequest('GET', $uri);
+
+        try {
+            return $this->client->sendRequest($request);
+        } catch (\Throwable $e) {
+            // Traduire les erreurs réseau en HttpClientExceptionInterface
+            throw new class($e->getMessage(), (int)$e->getCode(), $e) extends \RuntimeException implements HttpClientExceptionInterface {};
+        }
+    }
+}

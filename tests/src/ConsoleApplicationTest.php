@@ -187,6 +187,16 @@ final class ConsoleApplicationTest extends AbstractTestCase
         static::assertSame(Verbosity::VERBOSE, $output->getVerbosity());
     }
 
+    public function testVeryVerboseFlagSetsVerbosity(): void
+    {
+        $output = new NullOutput();
+        $app = new ConsoleApplication(output: $output, argv: ['bin/waffle', 'noop', '-vv']);
+        $app->add($this->command('noop'));
+
+        $app->run();
+        static::assertSame(Verbosity::VERY_VERBOSE, $output->getVerbosity());
+    }
+
     public function testDebugFlagSetsVerbosity(): void
     {
         $output = new NullOutput();

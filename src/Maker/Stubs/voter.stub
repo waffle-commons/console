@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ NAMESPACE }};
+
+use Waffle\Commons\Contracts\Security\VoterInterface;
+
+/**
+ * Voter de sécurité ABAC généré par Waffle Maker (par défaut Fail-Closed).
+ */
+final readonly class {{ CLASS_NAME }} implements VoterInterface
+{
+    #[\Override]
+    public function decide(): bool
+    {
+        // Logique de décision de sécurité ABAC.
+        // Sécurité par défaut : Fail-Closed (retourne toujours faux par défaut).
+        return false;
+    }
+}

@@ -1,0 +1,22 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ NAMESPACE }};
+
+use Waffle\Commons\Contracts\Attribute\Dto;
+use Waffle\Exception\ValidationException;
+
+/**
+ * Objet de Transfert de Données (DTO) généré par Waffle Maker.
+ */
+#[Dto]
+final class {{ CLASS_NAME }}
+{
+{{ PROPERTIES }}
+
+    public function __construct({{ CONSTRUCTOR_PARAMS }})
+    {
+{{ ASSIGNMENTS }}
+    }
+}

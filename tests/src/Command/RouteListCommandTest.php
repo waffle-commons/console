@@ -25,6 +25,8 @@ final class RouteListCommandTest extends AbstractTestCase
 
         static::assertSame('route:list', $command->getName());
         static::assertNotEmpty($command->getDescription());
+        static::assertSame('', $command->getHelp());
+        static::assertSame('route:list', $command->getSynopsis());
     }
 
     public function testEmptyRouterShortCircuits(): void

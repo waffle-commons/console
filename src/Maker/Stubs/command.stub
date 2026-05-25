@@ -1,0 +1,37 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ NAMESPACE }};
+
+use Waffle\Commons\Console\Command\AbstractCommand;
+use Waffle\Commons\Contracts\Console\InputInterface;
+use Waffle\Commons\Contracts\Console\OutputInterface;
+use Waffle\Commons\Contracts\Console\Enum\ExitCode;
+
+/**
+ * Commande de console générée par Waffle Maker.
+ */
+final class {{ CLASS_NAME }} extends AbstractCommand
+{
+    #[\Override]
+    public function getName(): string
+    {
+        return '{{ COMMAND_NAME }}';
+    }
+
+    #[\Override]
+    public function getDescription(): string
+    {
+        return 'Description de la commande {{ CLASS_NAME }}';
+    }
+
+    #[\Override]
+    public function execute(InputInterface $input, OutputInterface $output): int
+    {
+        // Votre logique d'exécution de la tâche console s'insère ici.
+        $output->writeLine('Exécution de la commande {{ COMMAND_NAME }}...');
+        
+        return ExitCode::SUCCESS->value;
+    }
+}
