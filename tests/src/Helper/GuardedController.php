@@ -14,4 +14,7 @@ final class GuardedController
 
     #[RequiresCsrfToken(id: 'form:save')]
     public function save(): void {}
+
+    #[Voter(AllowAllVoter::class)]
+    public function delete(): void {}
 }

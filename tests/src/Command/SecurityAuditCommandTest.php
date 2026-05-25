@@ -27,6 +27,29 @@ final class SecurityAuditCommandTest extends AbstractTestCase
 
         static::assertSame('security:audit', $command->getName());
         static::assertNotEmpty($command->getDescription());
+        static::assertSame('', $command->getHelp());
+        static::assertSame('security:audit', $command->getSynopsis());
+    }
+
+    public function testMethodLevelVoterCoverage(): void
+    {
+        $router = $this->createMock(RouterInterface::class);
+        $router
+            ->method('getRoutes')
+            ->willReturn([
+                new MatchedRoute(
+                    className: GuardedController::class,
+                    method: 'delete',
+                    arguments: [],
+                    path: '/items',
+                    name: 'items_delete',
+                ),
+            ]);
+
+        $output = new NullOutput();
+        $exit = new SecurityAuditCommand($router)->execute(new ArgvInput([]), $output);
+
+        static::assertSame(ExitCode::SUCCESS->value, $exit);
     }
 
     public function testEmptyRouterExitsSuccess(): void
