@@ -1,6 +1,5 @@
 {
     "name": "waffle-commons/console",
-    "version": "0.1.0-beta0",
     "description": "Console component for Waffle framework.",
     "type": "library",
     "license": "MIT",

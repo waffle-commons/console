@@ -9,7 +9,7 @@
 Waffle Console Component
 ========================
 
-> **Release:** `v0.1.0-beta0`
+> **Release:** `v0.1.0-beta1`
 
 A minimalist, zero-magic CLI runtime for the Waffle Framework (RFC-012). Commands are registered **explicitly** at boot — no auto-discovery — and resolve their dependencies through constructor injection.
 

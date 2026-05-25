@@ -10,6 +10,7 @@ use Waffle\Commons\Console\Command\RouteListCommand;
 use Waffle\Commons\Console\Input\ArgvInput;
 use Waffle\Commons\Console\Output\NullOutput;
 use Waffle\Commons\Contracts\Console\Enum\ExitCode;
+use Waffle\Commons\Contracts\Routing\MatchedRoute;
 use Waffle\Commons\Contracts\Routing\RouterInterface;
 use WaffleTests\Commons\Console\AbstractTestCase;
 
@@ -40,22 +41,21 @@ final class RouteListCommandTest extends AbstractTestCase
 
     public function testPrintsTableForRegisteredRoutes(): void
     {
-        /** @var array<array-key, array{classname: class-string, method: string, arguments: array<string, mixed>, path: string, name: non-falsy-string}> $routes */
         $routes = [
-            [
-                'classname' => 'App\\Controller\\Home',
-                'method' => 'index',
-                'arguments' => [],
-                'path' => '/',
-                'name' => 'home',
-            ],
-            [
-                'classname' => 'App\\Controller\\User',
-                'method' => 'show',
-                'arguments' => ['id' => 'int'],
-                'path' => '/users/{id}',
-                'name' => 'user_show',
-            ],
+            new MatchedRoute(
+                className: 'App\\Controller\\Home',
+                method: 'index',
+                arguments: [],
+                path: '/',
+                name: 'home',
+            ),
+            new MatchedRoute(
+                className: 'App\\Controller\\User',
+                method: 'show',
+                arguments: ['id' => 'int'],
+                path: '/users/{id}',
+                name: 'user_show',
+            ),
         ];
 
         $router = $this->createMock(RouterInterface::class);
