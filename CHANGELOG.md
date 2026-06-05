@@ -7,9 +7,14 @@ Released in lockstep with the Waffle Commons umbrella tag.
 
 ## [Unreleased] — targeting `0.1.0-beta2`
 
+### Added
+- `Waffle\Commons\Console\Command\MemoryAuditCommand` (`igor:audit`) — streams the monorepo-wide Igor memory-leak & state-mutation audit (`igor.sh`). Thin by design: it depends only on `Waffle\Commons\Contracts\Runtime\AuditRunnerInterface` (the `proc_open` engine lives in `waffle-commons/runtime`), so `console` gains no dependency edge. Returns `NO_INPUT` when the audit script is absent and `FAILURE` when Igor reports dangerous shared state. Distinct from `security:audit`, which audits ABAC/CSRF route coverage.
+
 ### Changed
-- Lockstep version bump only. No behavioural changes since `0.1.0-beta1`.
-- `composer.lock` refreshed to align with the ecosystem-wide dependency wave.
+- Lockstep version bump; `composer.lock` refreshed to align with the ecosystem-wide dependency wave.
+
+### Tests
+- `MemoryAuditCommandTest` and the `FakeAuditRunner` helper added — cover `--local`/`-s` flag forwarding, the missing-script (`NO_INPUT`) path, and pass/fail exit mapping against a fake runner.
 
 ## [0.1.0-beta1]
 
