@@ -9,9 +9,11 @@ use Waffle\Commons\Console\Input\ArgvInput;
 use Waffle\Commons\Console\Maker\Command\MakeCommandCommand;
 use Waffle\Commons\Console\Maker\Command\MakeControllerCommand;
 use Waffle\Commons\Console\Maker\Command\MakeDtoCommand;
+use Waffle\Commons\Console\Maker\Command\MakeEntityCommand;
 use Waffle\Commons\Console\Maker\Command\MakeEventPairCommand;
 use Waffle\Commons\Console\Maker\Command\MakeHttpClientCommand;
 use Waffle\Commons\Console\Maker\Command\MakeMiddlewareCommand;
+use Waffle\Commons\Console\Maker\Command\MakeRepositoryCommand;
 use Waffle\Commons\Console\Maker\Command\MakeVoterCommand;
 use Waffle\Commons\Console\Output\NullOutput;
 use Waffle\Commons\Contracts\Console\Enum\ExitCode;
@@ -206,6 +208,89 @@ final class MakerCommandsTest extends TestCase
         static::assertStringContainsString('OrderShippedEvent $event', $listenerContent);
     }
 
+    public function testMakeEntityGeneratesFileWithPropertyHooks(): void
+    {
+        $command = new MakeEntityCommand();
+        $input = new ArgvInput([
+            'User',
+            'id:string',
+            'email:string',
+            '--target=' . $this->tempDir . '/src/Entity',
+        ]);
+        $output = new NullOutput();
+
+        $exit = $command->execute($input, $output);
+        static::assertSame(ExitCode::SUCCESS->value, $exit);
+
+        $expectedFile = $this->tempDir . '/src/Entity/User.php';
+        static::assertFileExists($expectedFile);
+
+        $content = (string) file_get_contents($expectedFile);
+        static::assertStringContainsString('namespace TestApp\Entity;', $content);
+        static::assertStringContainsString('final class User', $content);
+        static::assertStringContainsString('public string $id {', $content);
+        static::assertStringContainsString('public string $email {', $content);
+        static::assertStringContainsString('__construct(string $id, string $email)', $content);
+    }
+
+    public function testMakeRepositoryGeneratesRepositoryAndMapperPair(): void
+    {
+        $command = new MakeRepositoryCommand();
+        $input = new ArgvInput([
+            'User',
+            'id:string',
+            'email:string',
+            '--table=users',
+            '--target=' . $this->tempDir . '/src/Repository',
+        ]);
+        $output = new NullOutput();
+
+        $exit = $command->execute($input, $output);
+        static::assertSame(ExitCode::SUCCESS->value, $exit);
+
+        $repositoryFile = $this->tempDir . '/src/Repository/UserRepository.php';
+        $mapperFile = $this->tempDir . '/src/Repository/UserMapper.php';
+
+        static::assertFileExists($repositoryFile);
+        static::assertFileExists($mapperFile);
+
+        $repositoryContent = (string) file_get_contents($repositoryFile);
+        static::assertStringContainsString('namespace TestApp\Repository;', $repositoryContent);
+        static::assertStringContainsString('final readonly class UserRepository', $repositoryContent);
+        static::assertStringContainsString('use TestApp\Entity\User;', $repositoryContent);
+        static::assertStringContainsString('target: User::class', $repositoryContent);
+        static::assertStringContainsString('mapper: new UserMapper()', $repositoryContent);
+        static::assertStringContainsString("->from('users')", $repositoryContent);
+
+        $mapperContent = (string) file_get_contents($mapperFile);
+        static::assertStringContainsString('namespace TestApp\Repository;', $mapperContent);
+        static::assertStringContainsString(
+            'final readonly class UserMapper implements DataMapperInterface',
+            $mapperContent,
+        );
+        static::assertStringContainsString("return 'users';", $mapperContent);
+        static::assertStringContainsString("return 'id';", $mapperContent);
+        static::assertStringContainsString("'id', 'email'", $mapperContent);
+        static::assertStringContainsString("'email' => \$entity->email,", $mapperContent);
+    }
+
+    public function testMakeRepositoryAcceptsExplicitRepositorySuffixAndTableDefault(): void
+    {
+        $command = new MakeRepositoryCommand();
+        $input = new ArgvInput([
+            'OrderRepository',
+            '--target=' . $this->tempDir . '/src/Repository',
+        ]);
+        $output = new NullOutput();
+
+        $exit = $command->execute($input, $output);
+        static::assertSame(ExitCode::SUCCESS->value, $exit);
+
+        $mapperContent = (string) file_get_contents($this->tempDir . '/src/Repository/OrderMapper.php');
+        static::assertStringContainsString("return 'orders';", $mapperContent);
+        static::assertStringContainsString("'id'", $mapperContent);
+    }
+
     public function testPreventOverwriteWithoutForce(): void
     {
         $command = new MakeControllerCommand();
@@ -252,7 +337,9 @@ final class MakerCommandsTest extends TestCase
         $commands = [
             new MakeControllerCommand(),
             new MakeDtoCommand(),
+            new MakeEntityCommand(),
             new MakeMiddlewareCommand(),
+            new MakeRepositoryCommand(),
             new MakeVoterCommand(),
             new MakeHttpClientCommand(),
             new MakeCommandCommand(),
