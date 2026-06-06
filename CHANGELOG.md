@@ -5,7 +5,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Released in lockstep with the Waffle Commons umbrella tag.
 
-## [Unreleased] — targeting `0.1.0-beta3`
+## [0.1.0-beta3] — 2026-06-07
 
 **Theme: identity federation & stateless persistence (ecosystem wave).**
 
@@ -21,6 +21,11 @@ Released in lockstep with the Waffle Commons umbrella tag.
 - `MemoryAuditCommandTest` and the `FakeAuditRunner` helper added — cover `--local`/`-s` flag forwarding, the missing-script (`NO_INPUT`) path, and pass/fail exit mapping against a fake runner.
 - `DataWarmupCommandTest` — empty registry, multi-warmer aggregation, "nothing to warm" reporting and failure exit mapping.
 - `MakerCommandsTest` extended for `make:entity` (generated hooks + constructor) and `make:repository` (repository + mapper pair, `Repository`-suffix and `--table` defaults, metadata/edge cases).
+
+## [0.1.0-beta2.1] — 2026-05-30
+
+### Changed
+- Lockstep re-tag of `0.1.0-beta2` (umbrella housekeeping patch) — no source changes in this component.
 
 ## [0.1.0-beta2] — 2026-05-29
 
