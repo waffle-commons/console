@@ -10,7 +10,7 @@
 Waffle Console Component
 ========================
 
-> **Release:** `v0.1.0-beta2` &nbsp;|&nbsp; [`CHANGELOG.md`](./CHANGELOG.md)
+> **Release:** `0.1.0-beta3` &nbsp;|&nbsp; [`CHANGELOG.md`](./CHANGELOG.md)
 
 A minimalist, zero-magic CLI runtime for the Waffle Framework (RFC-012). Commands are registered **explicitly** at boot — no auto-discovery — and resolve their dependencies through constructor injection.
 
@@ -29,6 +29,10 @@ composer require waffle-commons/console
 | `Waffle\Commons\Console\Command\CacheClearCommand` | `cache:clear` — flushes the configured `CacheInterface` backend. |
 | `Waffle\Commons\Console\Command\RouteListCommand` | `route:list` — renders the compiled route table. |
 | `Waffle\Commons\Console\Command\SecurityAuditCommand` | `security:audit` — walks controllers and prints the resolved access ladder (`#[Rule]` / `#[Voter]`). |
+| `Waffle\Commons\Console\Command\MigrateCommand` | `db:migrate` — applies pending SQL migrations through the contracts `MigrationRunnerInterface`, then resets the pool. |
+| `Waffle\Commons\Console\Command\MemoryAuditCommand` | `igor:audit` — streams the monorepo-wide Igor memory-leak audit through the contracts `AuditRunnerInterface`. |
+| `Waffle\Commons\Console\Command\DataWarmupCommand` | `data:warmup` — pre-compiles SQR trees / routing tables into OPcache shared memory through the contracts `DataWarmerInterface` (Beta-3). |
+| `Waffle\Commons\Console\Maker\Command\Make*Command` | The nine Waffle Maker scaffolders (RFC-020): `make:controller`, `make:dto`, `make:entity`, `make:repository`, `make:middleware`, `make:voter`, `make:command`, `make:http-client`, `make:event-pair`. |
 | `Waffle\Commons\Console\Input\ArgvInput` | `InputInterface` implementation parsing `argv`. |
 | `Waffle\Commons\Console\Output\StreamOutput` | Default `OutputInterface` writing to `STDOUT` / `STDERR`. |
 | `Waffle\Commons\Console\Output\NullOutput` | Silent `OutputInterface` for tests / quiet runs. |
