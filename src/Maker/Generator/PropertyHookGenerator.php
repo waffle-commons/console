@@ -24,8 +24,8 @@ final readonly class PropertyHookGenerator
 
         foreach ($fields as $field) {
             $parts = explode(':', $field, 2);
-            $name = trim($parts[0]);
-            $type = count($parts) > 1 ? trim($parts[1]) : 'mixed';
+            $name = mb_trim($parts[0]);
+            $type = count($parts) > 1 ? mb_trim($parts[1]) : 'mixed';
 
             if ($name === '') {
                 continue;

@@ -199,7 +199,7 @@ final readonly class SensitiveComparisonScanner
                 $file,
                 $line,
                 $id === T_IS_IDENTICAL ? '===' : '!==',
-                trim($lines[$line - 1] ?? ''),
+                mb_trim($lines[$line - 1] ?? ''),
             );
         }
 

@@ -44,7 +44,7 @@ final readonly class MakeEntityCommand extends AbstractMakerCommand
 
         $className = array_shift($positionals);
 
-        if ($className === null || trim($className) === '') {
+        if ($className === null || mb_trim($className) === '') {
             throw new \InvalidArgumentException('[ERROR] Entity name is required (e.g. User).');
         }
 
