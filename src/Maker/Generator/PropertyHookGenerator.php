@@ -47,7 +47,7 @@ final readonly class PropertyHookGenerator
                 $properties[] = <<<PHP
                         public string \${$name} {
                             set(string \$value) {
-                                if (trim(\$value) === '') {
+                                if (mb_trim(\$value) === '') {
                                     throw new ValidationException(message: 'The field {$name} cannot be empty.', field: '{$name}');
                                 }
                                 \$this->{$name} = \$value;
