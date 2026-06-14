@@ -88,6 +88,26 @@ final class SensitiveComparisonAuditCommandTest extends AbstractTestCase
         self::assertNotEmpty($output->errors());
     }
 
+    public function testDefaultPathIsUsedWhenNoPositionalArgument(): void
+    {
+        // Only a flag is supplied, so resolvePath() falls back to the default "src".
+        // Run from a dir without a "src" subdir to make the outcome deterministic.
+        $previous = getcwd();
+        chdir($this->dir);
+
+        try {
+            $output = new NullOutput();
+            $exit = new SensitiveComparisonAuditCommand()->execute(new ArgvInput(['--verbose']), $output);
+        } finally {
+            if ($previous !== false) {
+                chdir($previous);
+            }
+        }
+
+        self::assertSame(ExitCode::NO_INPUT->value, $exit);
+        self::assertNotEmpty($output->errors());
+    }
+
     public function testInjectedScannerIsUsed(): void
     {
         file_put_contents($this->dir . '/Whatever.php', "<?php\n\$x = 1;\n");

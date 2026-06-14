@@ -307,17 +307,13 @@ final readonly class SensitiveComparisonScanner
     private function isSensitiveName(string $name): bool
     {
         $name = ltrim($name, '$');
-        if ($name === '') {
-            return false;
-        }
 
-        // Break camelCase into words, then normalise separators to spaces.
+        // Break camelCase into words, then normalise separators to spaces. The name
+        // is a PHP identifier (no whitespace), so a space split is equivalent to a
+        // `/\s+/` split and keeps the return type a plain `list<string>`.
         $spaced = preg_replace('/(?<=[a-z0-9])(?=[A-Z])/', ' ', $name) ?? $name;
         $spaced = str_replace(['_', '-'], ' ', $spaced);
-        $words = preg_split('/\s+/', strtolower($spaced), -1, PREG_SPLIT_NO_EMPTY);
-        if ($words === false) {
-            return false;
-        }
+        $words = array_filter(explode(' ', strtolower($spaced)), static fn(string $word): bool => $word !== '');
 
         $hasSecret = false;
         foreach ($words as $word) {

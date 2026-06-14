@@ -128,6 +128,40 @@ final class SensitiveComparisonScannerTest extends AbstractTestCase
         self::assertStringEndsWith('Bad.php', $this->first($findings)->file);
     }
 
+    public function testScanFileReturnsEmptyWhenFileIsUnreadable(): void
+    {
+        // file_get_contents() returns false on a missing path; the scanner yields
+        // nothing. Swallow the expected E_WARNING so failOnWarning does not trip.
+        set_error_handler(static fn(): bool => true);
+        try {
+            $findings = new SensitiveComparisonScanner()->scanFile($this->dir . '/missing.php');
+        } finally {
+            restore_error_handler();
+        }
+
+        self::assertSame([], $findings);
+    }
+
+    public function testTrailingOperatorWithoutRightOperandIsIgnored(): void
+    {
+        // A `===` with no operand to its right has a null right index — skipped.
+        self::assertSame([], $this->scan('<?php $secretToken === '));
+    }
+
+    public function testSensitiveOperandInsideParenthesesIsFlagged(): void
+    {
+        // The public left operand ($plain) scans out of the parenthesis (depth < 0)
+        // before the sensitive right operand ($secretToken) trips the rule.
+        self::assertCount(1, $this->scan("<?php\nfoo(\$plain === \$secretToken);\n"));
+    }
+
+    public function testSensitiveOperandAfterArithmeticIsFlagged(): void
+    {
+        // Scanning the public left operand crosses an arithmetic token and the
+        // open-tag boundary; the sensitive right operand still flags the line.
+        self::assertCount(1, $this->scan("<?php\n\$a + \$b === \$secretToken;\n"));
+    }
+
     /**
      * @return list<SensitiveComparison>
      */
