@@ -33,7 +33,7 @@ final readonly class MakeHttpClientCommand extends AbstractMakerCommand
         $input->bindArgumentNames(['name']);
         $className = $input->getArgument('name');
 
-        if ($className === null || trim($className) === '') {
+        if ($className === null || mb_trim($className) === '') {
             throw new \InvalidArgumentException('[ERROR] HTTP Client name is required (e.g. UserApiClient).');
         }
 

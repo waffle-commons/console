@@ -43,7 +43,7 @@ final readonly class MakeDtoCommand extends AbstractMakerCommand
 
         $className = array_shift($positionals);
 
-        if ($className === null || trim($className) === '') {
+        if ($className === null || mb_trim($className) === '') {
             throw new \InvalidArgumentException('[ERROR] DTO name is required (e.g. UserRegistrationDto).');
         }
 

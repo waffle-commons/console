@@ -29,7 +29,7 @@ final class PropertyHookGeneratorTest extends TestCase
         static::assertStringContainsString('if ($value < 0)', $generated['properties']);
 
         static::assertStringContainsString('public string $name {', $generated['properties']);
-        static::assertStringContainsString('if (trim($value) === \'\')', $generated['properties']);
+        static::assertStringContainsString('if (mb_trim($value) === \'\')', $generated['properties']);
 
         static::assertStringContainsString('public bool $active;', $generated['properties']);
         static::assertStringContainsString('public mixed $title;', $generated['properties']);

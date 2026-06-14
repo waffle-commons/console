@@ -43,7 +43,7 @@ final readonly class MakeRepositoryCommand extends AbstractMakerCommand
 
         $requestedName = array_shift($positionals);
 
-        if ($requestedName === null || trim($requestedName) === '') {
+        if ($requestedName === null || mb_trim($requestedName) === '') {
             throw new \InvalidArgumentException('[ERROR] Repository name is required (e.g. User or UserRepository).');
         }
 
