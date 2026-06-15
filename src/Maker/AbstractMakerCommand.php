@@ -167,8 +167,9 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
             throw new \RuntimeException("Target file already exists: {$filepath}. Use --force (-f) to overwrite.");
         }
 
-        // Atomic writing using temp file and rename (Anti-OWASP A05:2021)
-        $tmpFile = $filepath . '.' . uniqid('wfl', true) . '.tmp';
+        // Atomic writing using temp file and rename (Anti-OWASP A05:2021); the
+        // unpredictable suffix avoids a guessable temp path (DX-01).
+        $tmpFile = $filepath . '.' . bin2hex(random_bytes(6)) . '.tmp';
         if (file_put_contents($tmpFile, $content) === false) {
             throw new \RuntimeException("Failed to write to temporary file: {$tmpFile}");
         }

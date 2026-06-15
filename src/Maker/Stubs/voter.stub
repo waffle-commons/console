@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace {{ NAMESPACE }};
 
+use Waffle\Commons\Contracts\Auth\SecurityContextInterface;
 use Waffle\Commons\Contracts\Security\VoterInterface;
 
 /**
@@ -12,9 +13,10 @@ use Waffle\Commons\Contracts\Security\VoterInterface;
 final readonly class {{ CLASS_NAME }} implements VoterInterface
 {
     #[\Override]
-    public function decide(): bool
+    public function decide(SecurityContextInterface $ctx, mixed $subject = null): bool
     {
-        // ABAC security decision logic.
+        // ABAC security decision logic. The authenticated identity is available
+        // via $ctx->getIdentity(); $subject carries the resource under decision.
         // Default security: Fail-Closed (always returns false by default).
         return false;
     }
