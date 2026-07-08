@@ -5,6 +5,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Released in lockstep with the Waffle Commons umbrella tag.
 
+## [0.1.0-beta5] — 2026-07-08
+
+**Theme: context-aware voters & unpredictable temp names.**
+
+### Added
+- `Command\ContainerCompileCommand` (`container:compile`) + `Compiler\ContainerCompiler` — the AOT-01 service-container compiler. Reads the booted, locked runtime container's definition map and emits a generated `CompiledContainer` (default artifact `var/cache/CompiledContainer.php`) with hardcoded constructor wiring for inlinable definitions, delegating closures/pre-registered objects to the composed runtime container. The emitted graph is identical to the runtime container's; only the resolution mechanism (static calls instead of reflection) changes. Source is hand-assembled — no codegen dependency — to hold the contracts-only perimeter. `Exception\CompilerException` is raised when a graph cannot be compiled to static source.
+- `Command\RouteCompileCommand` (`route:compile`) — the AOT-02 routing-table compiler. Serialises the router's priority-sorted `MatchedRoute` list to a build-time artifact (default `var/cache/routes.trie.php`) the router rehydrates at boot, skipping discovery on the hot path. An optional app-wired trie-builder closure may produce the concrete `RouteTrie` array; with none injected the command serialises the route list directly and the router rebuilds the trie at boot (mandatory fallback, identical behaviour either way).
+
+### Changed
+- Waffle Maker `make:voter`: the generated voter (`voter.stub`) and the `AllowAllVoter` test helper now implement the context-aware `decide(SecurityContextInterface $ctx, mixed $subject = null): bool` signature — the authenticated identity is reachable via `$ctx->getIdentity()` and `$subject` carries the resource under decision (still fail-closed by default). The stub now imports `Waffle\Commons\Contracts\Auth\SecurityContextInterface`.
+- **DX-01** — `Maker\AbstractMakerCommand` now derives the atomic-write temp-file suffix from `bin2hex(random_bytes(6))` instead of `uniqid('wfl', true)`, removing the guessable temp path (Anti-OWASP A05:2021).
+- `mago.toml`: the `cyclomatic-complexity` linter rule is now enabled with a ratchet `threshold = 50` (previously disabled).
+
 ## [0.1.0-beta4] — 2026-06-13
 
 **Theme: timing-safety gate.**
