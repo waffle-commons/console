@@ -251,6 +251,25 @@ final class ContainerCompilerTest extends AbstractTestCase
         static::assertSame(0, $service->touches, 'reset() must cascade to inlined resettable singletons');
     }
 
+    public function testResetPreservesInlinedSingletonIdentity(): void
+    {
+        // SEC-04: reset() must mirror the runtime Container's own reset() — scrub
+        // internal state via ResettableInterface without evicting the memo, so an
+        // inlined singleton keeps its worker-lifetime identity exactly like
+        // Container::reset() does (see ContainerTest::testSetObjectMemoizesTheInstanceForReset).
+        // A prior revision cleared $this->instances here, forcing a fresh `new` for
+        // every inlined service on every request and defeating the AOT fast path.
+        $input = new FakeRuntimeContainer();
+        $this->seed($input);
+        $compiled = $this->loadCompiledContainer($input, 'ResetIdentity');
+
+        $before = $compiled->get(ResettableLeafService::class);
+        $compiled->reset();
+        $after = $compiled->get(ResettableLeafService::class);
+
+        static::assertSame($before, $after, 'reset() must not evict inlined singletons from the compiled memo');
+    }
+
     public function testHasDelegatesToRuntimeContainer(): void
     {
         $input = new FakeRuntimeContainer();

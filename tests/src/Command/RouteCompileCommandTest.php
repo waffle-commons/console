@@ -90,6 +90,46 @@ final class RouteCompileCommandTest extends AbstractTestCase
         static::assertContainsOnlyInstancesOf(MatchedRoute::class, $rehydrated);
     }
 
+    public function testGeneratedArtifactRestrictsUnserializeToMatchedRoute(): void
+    {
+        // SEC-02 hardening: the emitted unserialize() call must scope
+        // allowed_classes to MatchedRoute rather than accepting any class.
+        $router = $this->createMock(RouterInterface::class);
+        $router->method('getRoutes')->willReturn($this->fixtureRoutes());
+
+        $this->artifact = sys_get_temp_dir() . '/aot/hardened_' . uniqid() . '.php';
+        $command = new RouteCompileCommand($router);
+
+        $input = new ArgvInput([$this->artifact]);
+        $input->bindArgumentNames(['artifact-path']);
+        $output = new NullOutput();
+
+        $command->execute($input, $output);
+
+        $contents = file_get_contents($this->artifact);
+        static::assertIsString($contents);
+        static::assertStringContainsString("'allowed_classes'", $contents);
+        static::assertStringContainsString('MatchedRoute::class', $contents);
+    }
+
+    public function testUnserializeRestrictionRejectsForeignClasses(): void
+    {
+        // Proves the exact unserialize() shape RouteCompileCommand emits actually
+        // rejects a class it never intended to carry (e.g. a tampered artifact),
+        // rather than silently instantiating it.
+        $hostile = base64_encode(serialize(new \stdClass()));
+
+        $decoded = base64_decode($hostile, true);
+        if ($decoded === false) {
+            static::fail('Failed to decode the fixture payload.');
+        }
+
+        /** @var mixed $rehydrated */
+        $rehydrated = unserialize($decoded, ['allowed_classes' => [MatchedRoute::class]]);
+
+        static::assertNotInstanceOf(\stdClass::class, $rehydrated);
+    }
+
     public function testUsesInjectedTrieCompilerWhenProvided(): void
     {
         $router = $this->createMock(RouterInterface::class);

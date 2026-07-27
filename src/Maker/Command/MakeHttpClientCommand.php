@@ -36,8 +36,10 @@ final readonly class MakeHttpClientCommand extends AbstractMakerCommand
         if ($className === null || mb_trim($className) === '') {
             throw new \InvalidArgumentException('[ERROR] HTTP Client name is required (e.g. UserApiClient).');
         }
+        $this->assertValidIdentifier($className);
 
-        $baseUri = $input->getOption('base-uri') ?? 'http://api.internal';
+        $baseUri = (string) ($input->getOption('base-uri') ?? 'http://api.internal');
+        $this->assertSafeForQuotedStub($baseUri, 'base URI');
         $force = $input->hasOption('force') || $input->hasOption('f');
 
         $targetDir = $this->resolveTargetDir($input, 'Service');

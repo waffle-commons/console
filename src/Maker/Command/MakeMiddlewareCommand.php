@@ -36,6 +36,7 @@ final readonly class MakeMiddlewareCommand extends AbstractMakerCommand
         if ($className === null || mb_trim($className) === '') {
             throw new \InvalidArgumentException('[ERROR] Middleware name is required (e.g. AuthMiddleware).');
         }
+        $this->assertValidIdentifier($className);
 
         $force = $input->hasOption('force') || $input->hasOption('f');
 

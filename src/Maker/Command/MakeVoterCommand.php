@@ -36,6 +36,7 @@ final readonly class MakeVoterCommand extends AbstractMakerCommand
         if ($className === null || mb_trim($className) === '') {
             throw new \InvalidArgumentException('[ERROR] Voter name is required (e.g. ArticleVoter).');
         }
+        $this->assertValidIdentifier($className);
 
         $force = $input->hasOption('force') || $input->hasOption('f');
 

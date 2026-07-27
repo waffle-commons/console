@@ -36,6 +36,7 @@ final readonly class MakeEventPairCommand extends AbstractMakerCommand
         if ($className === null || mb_trim($className) === '') {
             throw new \InvalidArgumentException('[ERROR] Event base name is required (e.g. UserRegistered).');
         }
+        $this->assertValidIdentifier($className);
 
         $baseName = preg_replace('/(Event|Listener)$/', '', $className);
         $eventName = $baseName . 'Event';

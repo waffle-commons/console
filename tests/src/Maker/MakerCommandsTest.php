@@ -6,6 +6,7 @@ namespace WaffleTests\Commons\Console\Maker;
 
 use PHPUnit\Framework\TestCase;
 use Waffle\Commons\Console\Input\ArgvInput;
+use Waffle\Commons\Console\Maker\AbstractMakerCommand;
 use Waffle\Commons\Console\Maker\Command\MakeCommandCommand;
 use Waffle\Commons\Console\Maker\Command\MakeControllerCommand;
 use Waffle\Commons\Console\Maker\Command\MakeDtoCommand;
@@ -17,6 +18,8 @@ use Waffle\Commons\Console\Maker\Command\MakeRepositoryCommand;
 use Waffle\Commons\Console\Maker\Command\MakeVoterCommand;
 use Waffle\Commons\Console\Output\NullOutput;
 use Waffle\Commons\Contracts\Console\Enum\ExitCode;
+use Waffle\Commons\Contracts\Console\InputInterface;
+use Waffle\Commons\Contracts\Console\OutputInterface;
 
 final class MakerCommandsTest extends TestCase
 {
@@ -330,6 +333,226 @@ final class MakerCommandsTest extends TestCase
         ]);
         $exit2 = $command->execute($inputForce, $output);
         static::assertSame(ExitCode::SUCCESS->value, $exit2);
+    }
+
+    public function testWriteFileRefusesContentThatFailsSyntaxCheck(): void
+    {
+        // SEC-... codegen-injection backstop. Every Make*Command input is now
+        // validated (assertValidIdentifier() / assertSafeForQuotedStub() /
+        // assertValidInteger()) before it ever reaches a stub, so there's no
+        // longer a CLI field left to smuggle invalid syntax through the
+        // normal command pipeline — this now exercises writeFile()'s php -l
+        // check directly, proving it still refuses genuinely broken PHP as
+        // an independent line of defense (e.g. against a future stub or
+        // generator that forgets to validate its own input).
+        $command = new readonly class extends AbstractMakerCommand {
+            #[\Override]
+            public function getName(): string
+            {
+                return 'test:write-file';
+            }
+
+            #[\Override]
+            public function getDescription(): string
+            {
+                return '';
+            }
+
+            #[\Override]
+            public function execute(InputInterface $input, OutputInterface $output): int
+            {
+                return ExitCode::SUCCESS->value;
+            }
+
+            public function writePublic(string $filepath, string $content, bool $force, OutputInterface $output): void
+            {
+                $this->writeFile($filepath, $content, $force, $output);
+            }
+        };
+
+        $filepath = $this->tempDir . '/src/Broken.php';
+        $output = new NullOutput();
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('syntax check');
+
+        try {
+            $command->writePublic($filepath, "<?php\n\ndeclare(strict_types=1);\n\nclass Broken {", false, $output);
+        } finally {
+            static::assertFileDoesNotExist($filepath);
+        }
+    }
+
+    public function testControllerRejectsHostileRoute(): void
+    {
+        // --route lands inside a single-quoted stub slot (`path: '{{ ROUTE }}'`);
+        // a stray quote used to reach the generated file unvalidated.
+        $command = new MakeControllerCommand();
+        $input = new ArgvInput([
+            'HostileRouteController',
+            "--route=orders'; system(\$_GET[0]); //",
+            '--target=' . $this->tempDir . '/src/Controller',
+        ]);
+        $output = new NullOutput();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid route');
+
+        $command->execute($input, $output);
+    }
+
+    public function testControllerRejectsHostilePriority(): void
+    {
+        // --priority lands as a BARE `priority: {{ PRIORITY }}` integer
+        // literal — no quotes at all to break out of.
+        $command = new MakeControllerCommand();
+        $input = new ArgvInput([
+            'HostilePriorityController',
+            '--priority=0); system($_GET[0]); //',
+            '--target=' . $this->tempDir . '/src/Controller',
+        ]);
+        $output = new NullOutput();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid priority');
+
+        $command->execute($input, $output);
+    }
+
+    public function testControllerAcceptsNegativePriority(): void
+    {
+        // Negative priorities are legitimate (catch-all routes) — the
+        // integer grammar must not reject the leading `-`.
+        $command = new MakeControllerCommand();
+        $input = new ArgvInput([
+            'NegativePriorityController',
+            '--priority=-1000',
+            '--target=' . $this->tempDir . '/src/Controller',
+        ]);
+        $output = new NullOutput();
+
+        $exit = $command->execute($input, $output);
+        static::assertSame(ExitCode::SUCCESS->value, $exit);
+
+        $content = (string) file_get_contents($this->tempDir . '/src/Controller/NegativePriorityController.php');
+        static::assertStringContainsString('priority: -1000', $content);
+    }
+
+    public function testMakeCommandRejectsHostileCommandName(): void
+    {
+        $command = new MakeCommandCommand();
+        $input = new ArgvInput([
+            'ImportDataCommand',
+            "--command-name=app:import'; system(\$_GET[0]); //",
+            '--target=' . $this->tempDir . '/src/Console/Command',
+        ]);
+        $output = new NullOutput();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid command name');
+
+        $command->execute($input, $output);
+    }
+
+    public function testMakeHttpClientRejectsHostileBaseUri(): void
+    {
+        $command = new MakeHttpClientCommand();
+        $input = new ArgvInput([
+            'ExternalApiClient',
+            "--base-uri=https://evil'; system(\$_GET[0]); //",
+            '--target=' . $this->tempDir . '/src/Service',
+        ]);
+        $output = new NullOutput();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid base URI');
+
+        $command->execute($input, $output);
+    }
+
+    public function testClassNameRejectsPathTraversalAttempt(): void
+    {
+        // The Blocking finding this closes: a className smuggling `../`
+        // segments used to reach resolveNamespaceAndPath() unvalidated and
+        // could write outside the target directory tree. assertValidIdentifier()
+        // now rejects it before any path is built or any stub is rendered.
+        $command = new MakeControllerCommand();
+        $input = new ArgvInput([
+            '../../../../etc/cron.d/evil',
+            '--target=' . $this->tempDir . '/src/Controller',
+        ]);
+        $output = new NullOutput();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid name');
+
+        $command->execute($input, $output);
+    }
+
+    public function testClassNameRejectsCodegenBreakoutAttempt(): void
+    {
+        // A className crafted to close the intended class early and open a
+        // second one is syntactically VALID PHP (php -l alone wouldn't catch
+        // it) — must be rejected by the identifier grammar instead.
+        $command = new MakeControllerCommand();
+        $input = new ArgvInput([
+            'Evil { public static function pwn() { system($_GET[0]); } } class Filler',
+            '--target=' . $this->tempDir . '/src/Controller',
+        ]);
+        $output = new NullOutput();
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $command->execute($input, $output);
+    }
+
+    public function testMakeRepositoryRejectsHostileIdentityField(): void
+    {
+        // $identity lands as a BARE `$entity->{{ IDENTITY }}` property-access
+        // expression in the generated mapper — no quotes to break out of, it
+        // just needs to not be a valid identifier to inject arbitrary code.
+        $command = new MakeRepositoryCommand();
+        $input = new ArgvInput([
+            'User',
+            'name:string',
+            '--identity=id; system($_GET[0])',
+            '--target=' . $this->tempDir . '/src/Repository',
+        ]);
+        $output = new NullOutput();
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $command->execute($input, $output);
+    }
+
+    public function testMakeRepositoryRejectsHostileTableName(): void
+    {
+        $command = new MakeRepositoryCommand();
+        $input = new ArgvInput([
+            'User',
+            '--table=' . "users'; system(\$_GET[0]); //",
+            '--target=' . $this->tempDir . '/src/Repository',
+        ]);
+        $output = new NullOutput();
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $command->execute($input, $output);
+    }
+
+    public function testMakeRepositoryRejectsHostileFieldName(): void
+    {
+        $command = new MakeRepositoryCommand();
+        $input = new ArgvInput([
+            'User',
+            "evil'; system(\$_GET[0]); //:string",
+            '--target=' . $this->tempDir . '/src/Repository',
+        ]);
+        $output = new NullOutput();
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $command->execute($input, $output);
     }
 
     public function testMakerCommandsMetadataAndEdgeCases(): void

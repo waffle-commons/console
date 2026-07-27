@@ -26,9 +26,14 @@ use Waffle\Commons\Contracts\Container\ContainerInterface;
  *
  * The generated class **composes** the runtime
  * `Waffle\Commons\Container\Container` (holds it as a readonly property). It does
- * NOT re-declare any new cross-request mutable container state beyond the single
- * per-request memo map (reset every request, exactly like the runtime
- * container's own `$instances`):
+ * NOT re-declare any new cross-request mutable container state beyond its own
+ * memo map, whose lifecycle exactly mirrors the runtime container's own
+ * `$instances` (SEC-04): identity persists for the worker's lifetime, `reset()`
+ * only scrubs internal state via `ResettableInterface` — it never evicts the memo.
+ * An earlier revision cleared the compiled memo on every `reset()`, which forced a
+ * fresh `new` for every inlined service each request (defeating the AOT fast
+ * path's purpose) while the runtime container kept identity — a behavioural
+ * discrepancy between interpreted and compiled modes that has been corrected.
  *
  *   - `has()` / `set()` delegate to the composed runtime container verbatim.
  *   - `reset()` resets the composed runtime container AND cascades any resettable
@@ -221,7 +226,9 @@ final class ContainerCompiler
             $className,
         );
         $lines[] = '{';
-        $lines[] = '    /** @var array<string, mixed> Per-request memo of compiled singletons (reset each request). */';
+        $lines[] = '    /** @var array<string, mixed> Worker-lifetime memo of compiled singletons — identity';
+        $lines[] = '     * persists across requests, mirroring the runtime container; reset() clears internal';
+        $lines[] = '     * state via ResettableInterface, it does not evict the memo (SEC-04). */';
         $lines[] = '    private array $instances = [];';
         $lines[] = '';
         $lines[] = '    public function __construct(';
@@ -447,7 +454,6 @@ final class ContainerCompiler
             '                $service->reset();',
             '            }',
             '        }',
-            '        $this->instances = [];',
             '        $this->runtime->reset();',
             '    }',
         ];
