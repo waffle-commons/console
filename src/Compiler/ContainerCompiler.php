@@ -27,13 +27,20 @@ use Waffle\Commons\Contracts\Container\ContainerInterface;
  * The generated class **composes** the runtime
  * `Waffle\Commons\Container\Container` (holds it as a readonly property). It does
  * NOT re-declare any new cross-request mutable container state beyond its own
- * memo map, whose lifecycle exactly mirrors the runtime container's own
- * `$instances` (SEC-04): identity persists for the worker's lifetime, `reset()`
- * only scrubs internal state via `ResettableInterface` — it never evicts the memo.
- * An earlier revision cleared the compiled memo on every `reset()`, which forced a
- * fresh `new` for every inlined service each request (defeating the AOT fast
- * path's purpose) while the runtime container kept identity — a behavioural
- * discrepancy between interpreted and compiled modes that has been corrected.
+ * memo map, which holds **only the inlined services** and whose lifecycle exactly
+ * mirrors the runtime container's own `$instances` (SEC-04): identity persists
+ * for the worker's lifetime, `reset()` only scrubs internal state via
+ * `ResettableInterface` — it never evicts the memo. An earlier revision cleared
+ * the compiled memo on every `reset()`, which forced a fresh `new` for every
+ * inlined service each request (defeating the AOT fast path's purpose) while the
+ * runtime container kept identity — a behavioural discrepancy between interpreted
+ * and compiled modes that has been corrected. A second, residual divergence has
+ * been corrected as well: `get()` used to memoise its passthrough (`default`) arm
+ * too, landing closures/pre-registered objects in BOTH the compiled memo and the
+ * runtime container's `$instances`, so a resettable passthrough reset TWICE per
+ * request in AOT mode versus exactly once interpreted. The emitted `get()` now
+ * guards on a `self::INLINED` membership map and delegates every non-inlined id
+ * to the runtime container without memoising it.
  *
  *   - `has()` / `set()` delegate to the composed runtime container verbatim.
  *   - `reset()` resets the composed runtime container AND cascades any resettable
@@ -43,12 +50,22 @@ use Waffle\Commons\Contracts\Container\ContainerInterface;
  *     (class-string concretes whose constructor the compiler could fully resolve
  *     by reflection), bypassing runtime reflection. Every other definition kind —
  *     closures (lazy factories) and pre-registered objects — is a **passthrough**
- *     delegated to the composed runtime container, since their construction logic
- *     cannot be expressed as static source.
+ *     delegated to the composed runtime container and never memoised locally,
+ *     since their construction logic cannot be expressed as static source and the
+ *     runtime memo must remain their single reset()-cascade owner. When NO
+ *     definition is inlinable the memo is dead weight, so the generated class
+ *     omits it entirely and `get()`/`reset()` are pure delegations.
  *
- * The emitted graph is therefore identical to the runtime container's (verified
- * by the snapshot test): same concrete classes, same constructor wiring — only
- * the *resolution mechanism* changes (static calls instead of reflection).
+ * The emitted graph is therefore structurally identical to the runtime
+ * container's — verified by the snapshot test as a deep-equal, FQCN-normalised
+ * comparison, NOT instance identity: same concrete classes, same constructor
+ * wiring — only the *resolution mechanism* changes (static calls instead of
+ * reflection). Accepted constraint (Beta-6): a closure factory or
+ * runtime-autowired passthrough that transitively resolves an INLINED id builds
+ * its own runtime-side instance, because the compiled memo never registers into
+ * the composed runtime container — such an id can therefore exist as one
+ * instance per memo. Each copy still resets exactly once per request, through
+ * its own owner's reset() cascade.
  *
  * ## Hand-rolled source
  *
@@ -226,11 +243,15 @@ final class ContainerCompiler
             $className,
         );
         $lines[] = '{';
-        $lines[] = '    /** @var array<string, mixed> Worker-lifetime memo of compiled singletons — identity';
-        $lines[] = '     * persists across requests, mirroring the runtime container; reset() clears internal';
-        $lines[] = '     * state via ResettableInterface, it does not evict the memo (SEC-04). */';
-        $lines[] = '    private array $instances = [];';
-        $lines[] = '';
+        if ($inlinable !== []) {
+            $lines[] = '    /** @var array<string, mixed> Worker-lifetime memo of the INLINED singletons ONLY —';
+            $lines[] = '     * passthroughs are never stored here (they live solely in the runtime container';
+            $lines[] = '     * memo, so a resettable passthrough resets exactly once per request). Identity';
+            $lines[] = '     * persists across requests, mirroring the runtime container; reset() clears internal';
+            $lines[] = '     * state via ResettableInterface, it does not evict the memo (SEC-04). */';
+            $lines[] = '    private array $instances = [];';
+            $lines[] = '';
+        }
         $lines[] = '    public function __construct(';
         $lines[] = sprintf('        private readonly \\%s $runtime,', $runtimeContainer);
         $lines[] = '    ) {}';
@@ -241,7 +262,7 @@ final class ContainerCompiler
         $lines[] = '';
         $lines = [...$lines, ...$this->emitSet()];
         $lines[] = '';
-        $lines = [...$lines, ...$this->emitReset()];
+        $lines = [...$lines, ...$this->emitReset($inlinable !== [])];
         $lines[] = '}';
         $lines[] = '';
 
@@ -249,15 +270,52 @@ final class ContainerCompiler
     }
 
     /**
+     * Emits the `INLINED` membership map (when non-empty) and the `get()` method.
+     *
+     * Passthroughs (closures, pre-registered objects, autowire-by-class) are
+     * delegated to the composed runtime container BEFORE the memo check and are
+     * never memoised locally: the runtime memo is their single owner, so a
+     * resettable passthrough participates in the reset() cascade exactly once per
+     * request (previously it was memoised on BOTH sides and reset twice). With
+     * zero inlinable definitions the whole body degenerates to the delegation.
+     *
      * @param array<string, class-string> $inlinable id => concrete class
      * @return list<string>
      */
     private function emitGet(array $inlinable): array
     {
+        if ($inlinable === []) {
+            return [
+                '    #[\\Override]',
+                '    public function get(string $id): mixed',
+                '    {',
+                '        // No definition was inlinable: every id (closures, pre-registered',
+                '        // objects, autowire-by-class) delegates to the composed runtime',
+                '        // container, which owns the only memo — nothing is memoised here.',
+                '        return $this->runtime->get($id);',
+                '    }',
+            ];
+        }
+
         $lines = [];
+        $lines[] = '    /** @var array<string, true> Membership map of the ids get() inlines below. */';
+        $lines[] = '    private const array INLINED = [';
+        foreach (array_keys($inlinable) as $id) {
+            $lines[] = sprintf('        %s => true,', $this->quote($id));
+        }
+        $lines[] = '    ];';
+        $lines[] = '';
         $lines[] = '    #[\\Override]';
         $lines[] = '    public function get(string $id): mixed';
         $lines[] = '    {';
+        $lines[] = '        // Non-inlinable definitions (closures, pre-registered objects) and';
+        $lines[] = '        // autowire-by-class delegate to the composed runtime container WITHOUT';
+        $lines[] = '        // being memoised here — the runtime memo stays their single owner, so';
+        $lines[] = '        // a resettable passthrough resets exactly once per request.';
+        $lines[] = '        if (!isset(self::INLINED[$id])) {';
+        $lines[] = '            return $this->runtime->get($id);';
+        $lines[] = '        }';
+        $lines[] = '';
         $lines[] = '        if (\\array_key_exists($id, $this->instances)) {';
         $lines[] = '            return $this->instances[$id];';
         $lines[] = '        }';
@@ -266,9 +324,6 @@ final class ContainerCompiler
         foreach ($inlinable as $id => $concrete) {
             $lines[] = sprintf('            %s => %s,', $this->quote($id), $this->emitConstruction($concrete));
         }
-        $lines[] = '            // Non-inlinable definitions (closures, pre-registered objects) and';
-        $lines[] = '            // autowire-by-class fall through to the composed runtime container.';
-        $lines[] = '            default => $this->runtime->get($id),';
         $lines[] = '        };';
         $lines[] = '';
         $lines[] = '        $this->instances[$id] = $instance;';
@@ -442,13 +497,32 @@ final class ContainerCompiler
     }
 
     /**
+     * Emits `reset()`. With a memo, it cascades over the inlined singletons and
+     * then delegates; SEC-04: it scrubs state via `ResettableInterface` only and
+     * NEVER evicts the memo (identity persists for the worker's lifetime, exactly
+     * like the runtime container's own reset()). Without a memo (zero inlinable
+     * definitions) it is a pure delegation.
+     *
+     * @param bool $hasMemo Whether the generated class declares the memo property.
      * @return list<string>
      */
-    private function emitReset(): array
+    private function emitReset(bool $hasMemo): array
     {
+        if (!$hasMemo) {
+            return [
+                '    public function reset(): void',
+                '    {',
+                '        // Nothing is memoised locally — the runtime container owns every instance.',
+                '        $this->runtime->reset();',
+                '    }',
+            ];
+        }
+
         return [
             '    public function reset(): void',
             '    {',
+            '        // SEC-04: scrub internal state via ResettableInterface only — never evict',
+            '        // the memo, so inlined singletons keep their worker-lifetime identity.',
             '        foreach ($this->instances as $service) {',
             '            if ($service instanceof \\Waffle\\Commons\\Contracts\\Service\\ResettableInterface) {',
             '                $service->reset();',
