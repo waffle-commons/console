@@ -5,6 +5,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Released in lockstep with the Waffle Commons umbrella tag.
 
+## [0.1.0-beta6] — 2026-08-03
+
+**Theme: code-generation and AOT hardening.**
+
+### Fixed
+- Waffle Maker validates every interpolated CLI token against strict identifier/type grammars and runs `php -l` on generated source before the atomic write, closing a codegen-injection path (Beta6 audit FIX-01).
+- The generated route cache rehydrates with `unserialize(..., ['allowed_classes' => [MatchedRoute::class]])` instead of an unrestricted call (defence-in-depth; no untrusted-input path reached it).
+- The compiled container memoises **only inlined services**: passthrough singletons delegate to the runtime container instead of being memoised twice, so a `ResettableInterface` service resets exactly once per request in AOT mode as it does interpreted.
+
+### Documentation
+- The README now links into the central Diátaxis documentation tree (DOC-02).
+
 ## [0.1.0-beta5] — 2026-07-08
 
 **Theme: context-aware voters & unpredictable temp names.**
