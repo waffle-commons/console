@@ -120,6 +120,14 @@ Contract-first, component-agnostic by construction: components compose through `
 docker exec -w /waffle-commons/console waffle-dev composer tests
 ```
 
+## 📚 Documentation
+
+Central framework docs (Diátaxis) for this component:
+
+- Reference: [`reference/console.md`](https://github.com/waffle-commons/documentation/blob/main/reference/console.md)
+- Explanation: [`explanation/aot-compilation.md`](https://github.com/waffle-commons/documentation/blob/main/explanation/aot-compilation.md)
+- Full documentation tree: [waffle-commons/documentation](https://github.com/waffle-commons/documentation)
+
 ## 📄 License
 
 MIT — see [LICENSE.md](./LICENSE.md).
