@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Waffle\Commons\Console\Input;
 
+use IgorPhp\IgorBundle\Attribute\WorkerSafe;
 use Waffle\Commons\Contracts\Console\Constant;
 use Waffle\Commons\Contracts\Console\InputInterface;
 
@@ -19,6 +20,10 @@ use Waffle\Commons\Contracts\Console\InputInterface;
  * Argument-name binding is deferred so callers can construct an `ArgvInput`
  * with raw argv and then bind the command's expected argument names.
  */
+#[WorkerSafe(
+    scope: 'cli',
+    reason: 'CLI-only: this class is constructed per `bin/waffle` invocation and is never registered in the FrankenPHP worker container, so its mutations cannot cross a request boundary',
+)]
 final class ArgvInput implements InputInterface
 {
     /** @var list<string> Tokens still treated as positional (in original order). */

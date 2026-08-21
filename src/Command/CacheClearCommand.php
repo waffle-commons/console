@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Waffle\Commons\Console\Command;
 
+use IgorPhp\IgorBundle\Attribute\WorkerSafe;
 use Throwable;
 use Waffle\Commons\Contracts\Cache\CacheInterface;
 use Waffle\Commons\Contracts\Console\Enum\ExitCode;
@@ -18,6 +19,10 @@ use Waffle\Commons\Contracts\Console\OutputInterface;
  * Returns `ExitCode::SUCCESS` on success, `ExitCode::FAILURE` if the backend
  * raised an exception during clear.
  */
+#[WorkerSafe(
+    scope: 'cli',
+    reason: 'CLI-only: this class is constructed per `bin/waffle` invocation and is never registered in the FrankenPHP worker container, so its mutations cannot cross a request boundary',
+)]
 final readonly class CacheClearCommand extends AbstractCommand
 {
     public function __construct(

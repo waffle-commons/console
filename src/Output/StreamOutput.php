@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Waffle\Commons\Console\Output;
 
+use IgorPhp\IgorBundle\Attribute\WorkerSafe;
 use RuntimeException;
 use Waffle\Commons\Contracts\Console\Enum\Verbosity;
 use Waffle\Commons\Contracts\Console\OutputInterface;
@@ -14,6 +15,10 @@ use Waffle\Commons\Contracts\Console\OutputInterface;
  * `writeError()` ALWAYS reaches stderr regardless of verbosity (CI/CD pipelines
  * need to see failures). Standard `write` / `writeLine` are gated by Verbosity.
  */
+#[WorkerSafe(
+    scope: 'cli',
+    reason: 'CLI-only: this class is constructed per `bin/waffle` invocation and is never registered in the FrankenPHP worker container, so its mutations cannot cross a request boundary',
+)]
 final class StreamOutput implements OutputInterface
 {
     /** @var resource */

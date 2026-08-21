@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Waffle\Commons\Console\Command;
 
+use IgorPhp\IgorBundle\Attribute\WorkerSafe;
 use Waffle\Commons\Contracts\Console\Enum\ExitCode;
 use Waffle\Commons\Contracts\Console\InputInterface;
 use Waffle\Commons\Contracts\Console\OutputInterface;
@@ -23,6 +24,10 @@ use Waffle\Commons\Contracts\Runtime\AuditRunnerInterface;
  * Exit codes: SUCCESS (0) audit passed, FAILURE (1) dangerous shared state,
  * NO_INPUT (66) the audit script is missing.
  */
+#[WorkerSafe(
+    scope: 'cli',
+    reason: 'CLI-only: this class is constructed per `bin/waffle` invocation and is never registered in the FrankenPHP worker container, so its mutations cannot cross a request boundary',
+)]
 final readonly class MemoryAuditCommand extends AbstractCommand
 {
     public const string NAME = 'igor:audit';

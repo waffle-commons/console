@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Waffle\Commons\Console\Command;
 
+use IgorPhp\IgorBundle\Attribute\WorkerSafe;
 use Throwable;
 use Waffle\Commons\Contracts\Console\Enum\ExitCode;
 use Waffle\Commons\Contracts\Console\InputInterface;
@@ -28,6 +29,10 @@ use function sprintf;
  * mandate (RFC-022). Migrations are committed per-file inside the runner, so by
  * the time reset() runs there is no open transaction left to roll back.
  */
+#[WorkerSafe(
+    scope: 'cli',
+    reason: 'CLI-only: this class is constructed per `bin/waffle` invocation and is never registered in the FrankenPHP worker container, so its mutations cannot cross a request boundary',
+)]
 final readonly class MigrateCommand extends AbstractCommand
 {
     public function __construct(
