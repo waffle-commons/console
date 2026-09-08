@@ -10,7 +10,7 @@
 Waffle Console Component
 ========================
 
-> **Release:** `0.1.0-beta5` &nbsp;|&nbsp; [`CHANGELOG.md`](./CHANGELOG.md)
+> **Release:** `0.1.0-beta6` &nbsp;|&nbsp; [`CHANGELOG.md`](./CHANGELOG.md)
 
 A minimalist, zero-magic CLI runtime for the Waffle Framework (RFC-012). Commands are registered **explicitly** at boot — no auto-discovery — and resolve their dependencies through constructor injection.
 
@@ -60,7 +60,7 @@ use Waffle\Commons\Console\ConsoleApplication;
 use Waffle\Commons\Console\Command\CacheClearCommand;
 use Waffle\Commons\Console\Command\RouteListCommand;
 
-$app = new ConsoleApplication(name: 'Waffle', version: '0.1.0-beta0');
+$app = new ConsoleApplication(name: 'My App', version: '1.0.0'); // your app's name/version
 
 $app->add(new CacheClearCommand($cache));
 $app->add(new RouteListCommand($router));
@@ -119,6 +119,14 @@ Contract-first, component-agnostic by construction: components compose through `
 ```bash
 docker exec -w /waffle-commons/console waffle-dev composer tests
 ```
+
+## 📚 Documentation
+
+Central framework docs (Diátaxis) for this component:
+
+- Reference: [`reference/console.md`](https://github.com/waffle-commons/documentation/blob/main/reference/console.md)
+- Explanation: [`explanation/aot-compilation.md`](https://github.com/waffle-commons/documentation/blob/main/explanation/aot-compilation.md)
+- Full documentation tree: [waffle-commons/documentation](https://github.com/waffle-commons/documentation)
 
 ## 📄 License
 

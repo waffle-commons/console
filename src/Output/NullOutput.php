@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Waffle\Commons\Console\Output;
 
+use IgorPhp\IgorBundle\Attribute\WorkerSafe;
 use Waffle\Commons\Contracts\Console\Enum\Verbosity;
 use Waffle\Commons\Contracts\Console\OutputInterface;
 
@@ -14,6 +15,10 @@ use Waffle\Commons\Contracts\Console\OutputInterface;
  * Exposes the captured calls via {@see self::lines()} and {@see self::errors()}
  * so tests can assert behavior without parsing stdout/stderr.
  */
+#[WorkerSafe(
+    scope: 'cli',
+    reason: 'CLI-only: this class is constructed per `bin/waffle` invocation and is never registered in the FrankenPHP worker container, so its mutations cannot cross a request boundary',
+)]
 final class NullOutput implements OutputInterface
 {
     /** @var list<array{0: string, 1: Verbosity}> */

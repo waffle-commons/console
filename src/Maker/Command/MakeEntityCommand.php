@@ -47,6 +47,7 @@ final readonly class MakeEntityCommand extends AbstractMakerCommand
         if ($className === null || mb_trim($className) === '') {
             throw new \InvalidArgumentException('[ERROR] Entity name is required (e.g. User).');
         }
+        $this->assertValidIdentifier($className);
 
         $fields = $positionals;
         $force = $input->hasOption('force') || $input->hasOption('f');

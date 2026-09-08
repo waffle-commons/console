@@ -36,9 +36,12 @@ final readonly class MakeControllerCommand extends AbstractMakerCommand
         if ($className === null || mb_trim($className) === '') {
             throw new \InvalidArgumentException('[ERROR] Controller name is required (e.g. HomeController).');
         }
+        $this->assertValidIdentifier($className);
 
-        $route = $input->getOption('route') ?? '/';
-        $priority = $input->getOption('priority') ?? '0';
+        $route = (string) ($input->getOption('route') ?? '/');
+        $priority = (string) ($input->getOption('priority') ?? '0');
+        $this->assertSafeForQuotedStub($route, 'route');
+        $this->assertValidInteger($priority, 'priority');
         $force = $input->hasOption('force') || $input->hasOption('f');
 
         $targetDir = $this->resolveTargetDir($input, 'Controller');

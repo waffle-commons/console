@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Waffle\Commons\Console;
 
+use IgorPhp\IgorBundle\Attribute\WorkerSafe;
 use Throwable;
 use Waffle\Commons\Console\Exception\CommandNotFoundException;
 use Waffle\Commons\Console\Input\ArgvInput;
@@ -29,6 +30,10 @@ use Waffle\Commons\Contracts\Console\OutputInterface;
  *     $app->add(new RouteListCommand($router));
  *     exit($app->run());
  */
+#[WorkerSafe(
+    scope: 'cli',
+    reason: 'CLI-only: this class is constructed per `bin/waffle` invocation and is never registered in the FrankenPHP worker container, so its mutations cannot cross a request boundary',
+)]
 final class ConsoleApplication implements ConsoleApplicationInterface
 {
     /** @var array<string, CommandInterface> */

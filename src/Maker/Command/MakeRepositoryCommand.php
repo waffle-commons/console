@@ -46,6 +46,7 @@ final readonly class MakeRepositoryCommand extends AbstractMakerCommand
         if ($requestedName === null || mb_trim($requestedName) === '') {
             throw new \InvalidArgumentException('[ERROR] Repository name is required (e.g. User or UserRepository).');
         }
+        $this->assertValidIdentifier($requestedName, 'repository name');
 
         $repositoryName = str_ends_with($requestedName, 'Repository') ? $requestedName : $requestedName . 'Repository';
         $entityName = substr($repositoryName, 0, -strlen('Repository'));
@@ -61,11 +62,23 @@ final readonly class MakeRepositoryCommand extends AbstractMakerCommand
         $identity = (string) ($input->getOption('identity') ?? 'id');
         $table = (string) ($input->getOption('table') ?? strtolower($entityName) . 's');
 
+        // $identity lands as a BARE `$entity->{{ IDENTITY }}` property-access
+        // expression in the mapper stub (no surrounding quotes at all) — the
+        // most dangerous of these slots, so it gets the same identifier
+        // grammar as a class name. $table is always quote-wrapped in the
+        // stubs, but validated the same way for simplicity/consistency
+        // rather than escaping a string literal.
+        $this->assertValidIdentifier($identity, 'identity field');
+        $this->assertValidIdentifier($table, 'table name');
+
         // Field names for the mapper projection; the identity always leads.
+        // Each name lands as both a quoted array entry (FIELDS_LIST) and a
+        // bare `$entity->{name}` property access (ROW_LINES) — same grammar.
         $fieldNames = [$identity];
         foreach ($positionals as $field) {
             $name = explode(':', $field)[0];
             if ($name !== '' && $name !== $identity) {
+                $this->assertValidIdentifier($name, 'field name');
                 $fieldNames[] = $name;
             }
         }

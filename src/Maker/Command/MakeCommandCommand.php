@@ -36,8 +36,10 @@ final readonly class MakeCommandCommand extends AbstractMakerCommand
         if ($className === null || mb_trim($className) === '') {
             throw new \InvalidArgumentException('[ERROR] Command class name is required (e.g. CustomTaskCommand).');
         }
+        $this->assertValidIdentifier($className);
 
-        $commandName = $input->getOption('command-name') ?? 'app:custom-task';
+        $commandName = (string) ($input->getOption('command-name') ?? 'app:custom-task');
+        $this->assertSafeForQuotedStub($commandName, 'command name');
         $force = $input->hasOption('force') || $input->hasOption('f');
 
         $targetDir = $this->resolveTargetDir($input, 'Console/Command');

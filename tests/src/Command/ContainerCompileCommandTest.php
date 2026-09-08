@@ -67,6 +67,12 @@ final class ContainerCompileCommandTest extends AbstractTestCase
         $source = (string) file_get_contents($this->artifact);
         static::assertStringContainsString('CompiledFromCommand', $source);
         static::assertStringContainsString('CompiledContainerInterface', $source);
+        // SEC-04 residual shape: get() guards on the INLINED membership map and the
+        // delegate path returns immediately — passthroughs are never memoised (no
+        // default arm writing into the compiled memo).
+        static::assertStringContainsString('private const array INLINED = [', $source);
+        static::assertStringContainsString('if (!isset(self::INLINED[$id])) {', $source);
+        static::assertStringNotContainsString('default =>', $source);
         static::assertSame([], $output->errors());
     }
 

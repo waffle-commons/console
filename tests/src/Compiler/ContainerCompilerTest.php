@@ -24,6 +24,7 @@ use WaffleTests\Commons\Console\Compiler\Fixture\MidService;
 use WaffleTests\Commons\Console\Compiler\Fixture\NonArrayDefinitionsContainer;
 use WaffleTests\Commons\Console\Compiler\Fixture\NullableUnionDependentService;
 use WaffleTests\Commons\Console\Compiler\Fixture\OptionalDependentService;
+use WaffleTests\Commons\Console\Compiler\Fixture\ResetCountingService;
 use WaffleTests\Commons\Console\Compiler\Fixture\ResettableLeafService;
 use WaffleTests\Commons\Console\Compiler\Fixture\RootService;
 use WaffleTests\Commons\Console\Compiler\Fixture\ScalarDefaultsService;
@@ -43,7 +44,9 @@ use WaffleTests\Commons\Console\Compiler\Fixture\VariadicService;
  *
  * Closure-passthrough set documented by {@see self::testClosureAndObjectPassthrough()}:
  * closures (lazy factories) and pre-registered objects are NOT inlined; the
- * compiled `get()` delegates them to the composed runtime container verbatim.
+ * compiled `get()` delegates them to the composed runtime container verbatim —
+ * guarded by the `self::INLINED` membership map and WITHOUT memoising them, so a
+ * resettable passthrough resets exactly once per request (SEC-04 residual).
  */
 #[CoversClass(ContainerCompiler::class)]
 final class ContainerCompilerTest extends AbstractTestCase
@@ -251,6 +254,25 @@ final class ContainerCompilerTest extends AbstractTestCase
         static::assertSame(0, $service->touches, 'reset() must cascade to inlined resettable singletons');
     }
 
+    public function testResetPreservesInlinedSingletonIdentity(): void
+    {
+        // SEC-04: reset() must mirror the runtime Container's own reset() — scrub
+        // internal state via ResettableInterface without evicting the memo, so an
+        // inlined singleton keeps its worker-lifetime identity exactly like
+        // Container::reset() does (see ContainerTest::testSetObjectMemoizesTheInstanceForReset).
+        // A prior revision cleared $this->instances here, forcing a fresh `new` for
+        // every inlined service on every request and defeating the AOT fast path.
+        $input = new FakeRuntimeContainer();
+        $this->seed($input);
+        $compiled = $this->loadCompiledContainer($input, 'ResetIdentity');
+
+        $before = $compiled->get(ResettableLeafService::class);
+        $compiled->reset();
+        $after = $compiled->get(ResettableLeafService::class);
+
+        static::assertSame($before, $after, 'reset() must not evict inlined singletons from the compiled memo');
+    }
+
     public function testHasDelegatesToRuntimeContainer(): void
     {
         $input = new FakeRuntimeContainer();
@@ -279,6 +301,113 @@ final class ContainerCompilerTest extends AbstractTestCase
         static::assertSame($prebuilt, $compiled->get('prebuilt.service'));
     }
 
+    public function testPassthroughResettableIsNeverMemoisedAndResetsExactlyOnce(): void
+    {
+        // SEC-04 residual: the pre-fix get() memoised its passthrough arm too, so
+        // a resettable passthrough lived in BOTH the compiled memo and the runtime
+        // container's instances and reset TWICE per request (versus exactly once
+        // in interpreted mode). The INLINED guard delegates passthroughs without
+        // memoising them: exactly one reset each, on both sides of the split.
+        $input = new FakeRuntimeContainer();
+        $input->set(ResetCountingService::class, ResetCountingService::class);
+        $passthrough = new ResetCountingService();
+        $input->set('passthrough.resettable', $passthrough);
+
+        $compiled = $this->loadCompiledContainer($input, 'ResetOnce');
+
+        $inlined = $compiled->get(ResetCountingService::class);
+        static::assertInstanceOf(ResetCountingService::class, $inlined);
+        static::assertSame($passthrough, $compiled->get('passthrough.resettable'));
+
+        // The compiled memo holds ONLY the inlined id — never the passthrough.
+        $memo = $this->memoOf($compiled);
+        static::assertArrayHasKey(ResetCountingService::class, $memo);
+        static::assertArrayNotHasKey('passthrough.resettable', $memo);
+
+        $compiled->reset();
+
+        static::assertSame(1, $passthrough->resets, 'passthrough must reset exactly once (runtime cascade only)');
+        static::assertSame(1, $inlined->resets, 'inlined service must reset exactly once (compiled cascade only)');
+
+        // SEC-04: reset() never evicts — the inlined id survives in the memo with
+        // its identity intact, and the passthrough still is not there.
+        $memoAfterReset = $this->memoOf($compiled);
+        static::assertArrayHasKey(ResetCountingService::class, $memoAfterReset);
+        static::assertArrayNotHasKey('passthrough.resettable', $memoAfterReset);
+        static::assertSame($inlined, $compiled->get(ResetCountingService::class));
+    }
+
+    public function testEmittedGetGuardsDelegationBeforeTheMemo(): void
+    {
+        // The delegate path must return BEFORE any memoisation: the emitted get()
+        // opens with the INLINED membership guard, the match has no default arm,
+        // and only inlined ids ever reach the `$this->instances[$id]` write.
+        $input = new FakeRuntimeContainer();
+        $this->seed($input);
+        $input->set('factory.service', static fn(): LeafService => new LeafService());
+
+        $source = new ContainerCompiler()->compile(
+            $input,
+            'WaffleTests\\Commons\\Console\\Compiler\\Generated',
+            'CompiledGuardShape',
+            FakeRuntimeContainer::class,
+        );
+
+        static::assertStringContainsString('private const array INLINED = [', $source);
+        static::assertStringContainsString(
+            "if (!isset(self::INLINED[\$id])) {\n            return \$this->runtime->get(\$id);\n        }",
+            $source,
+            'the guard must delegate non-inlined ids with an immediate return (no memoisation)',
+        );
+        static::assertStringNotContainsString('default =>', $source, 'the match must not have a passthrough arm');
+
+        // Guard first, memo lookup second: the delegate path cannot touch the memo.
+        $memoAt = strpos($source, 'array_key_exists($id, $this->instances)');
+        if ($memoAt === false) {
+            static::fail('the emitted get() must contain the memo lookup for inlined ids');
+        }
+        static::assertStringContainsString(
+            'self::INLINED[$id]',
+            substr($source, 0, $memoAt),
+            'the INLINED guard must precede the memo lookup',
+        );
+
+        // The passthrough id never appears in the INLINED membership map.
+        static::assertStringNotContainsString("'factory.service'", $source);
+    }
+
+    public function testCompiledResetParityWithRuntimeOverManyCycles(): void
+    {
+        // Parity oracle: for the SAME definition set (inlined class, closures and
+        // pre-registered objects, in Resettable and non-Resettable variants), the
+        // compiled container must produce the exact per-service reset counts of
+        // the interpreted container over N get()/reset() request cycles — one
+        // reset per cycle per resettable service, never two (the pre-fix compiled
+        // get() memoised passthroughs on both sides, doubling their resets) — and
+        // every instance must survive the cycles with its identity intact.
+        $runtime = new FakeRuntimeContainer();
+        $this->seedParity($runtime);
+        $runtimeCounts = $this->exerciseResetCycles($runtime, 5);
+
+        $input = new FakeRuntimeContainer();
+        $this->seedParity($input);
+        $compiled = $this->loadCompiledContainer($input, 'Parity');
+        $compiledCounts = $this->exerciseResetCycles($compiled, 5);
+
+        static::assertSame(
+            $runtimeCounts,
+            $compiledCounts,
+            'compiled and interpreted reset cascades must be identical per service',
+        );
+        // Sanity: exactly one reset per cycle for every resettable variant.
+        static::assertSame(5, $compiledCounts[ResetCountingService::class]);
+        static::assertSame(5, $compiledCounts['factory.resettable']);
+        static::assertSame(5, $compiledCounts['prebuilt.resettable']);
+        static::assertNull($compiledCounts[LeafService::class]);
+        static::assertNull($compiledCounts['factory.plain']);
+        static::assertNull($compiledCounts['prebuilt.plain']);
+    }
+
     public function testCompilingAContainerWithoutDefinitionsMapThrows(): void
     {
         $opaque = new class implements ContainerInterface {
@@ -305,16 +434,41 @@ final class ContainerCompilerTest extends AbstractTestCase
         new ContainerCompiler()->compile($opaque);
     }
 
-    public function testEmptyMatchArmStillCompiles(): void
+    public function testZeroInlinableDefinitionsEmitDelegateOnlyContainer(): void
     {
-        // A container whose only definitions are non-inlinable (a closure) produces
-        // a compiled get() whose match has only the default arm.
+        // A container whose only definitions are non-inlinable (a closure and a
+        // pre-registered object) degenerates: get() is a pure delegation to the
+        // runtime container and the dead memo (plus INLINED map) is not emitted
+        // at all — reset() likewise delegates verbatim.
         $input = new FakeRuntimeContainer();
         $input->set('only.factory', static fn(): LeafService => new LeafService());
+        $prebuilt = new ResetCountingService();
+        $input->set('prebuilt.resettable', $prebuilt);
+
+        $source = new ContainerCompiler()->compile(
+            $input,
+            'WaffleTests\\Commons\\Console\\Compiler\\Generated',
+            'CompiledDegenerateShape',
+            FakeRuntimeContainer::class,
+        );
+        static::assertStringContainsString('return $this->runtime->get($id);', $source);
+        static::assertStringNotContainsString('self::INLINED', $source, 'no membership map without inlined ids');
+        static::assertStringNotContainsString('$this->instances', $source, 'the dead memo must not be emitted');
+        static::assertStringNotContainsString('match (', $source, 'no match without inlined arms');
 
         $compiled = $this->loadCompiledContainer($input, 'EmptyMatch');
 
-        static::assertInstanceOf(LeafService::class, $compiled->get('only.factory'));
+        // get() delegates: identity matches the runtime container exactly, and the
+        // second get() returns the SAME instance (memoised by the runtime, not here).
+        $first = $compiled->get('only.factory');
+        static::assertInstanceOf(LeafService::class, $first);
+        static::assertSame($first, $compiled->get('only.factory'));
+        static::assertSame($input->get('only.factory'), $first);
+        static::assertSame($prebuilt, $compiled->get('prebuilt.resettable'));
+
+        // reset() delegates to the runtime cascade — exactly one reset per request.
+        $compiled->reset();
+        static::assertSame(1, $prebuilt->resets, 'degenerate reset() must cascade once via the runtime container');
     }
 
     public function testAbstractClassDefinitionIsNotInlinedAndPassesThrough(): void
@@ -366,8 +520,10 @@ final class ContainerCompilerTest extends AbstractTestCase
             $source,
             'a class with an intersection-typed ctor param must not be inlined',
         );
-        // Only the default (runtime passthrough) arm survives for this graph.
-        static::assertStringContainsString('default => $this->runtime->get($id)', $source);
+        // Nothing is inlinable for this graph: get() degenerates to the pure
+        // runtime delegation (no INLINED map, no memo, no match).
+        static::assertStringContainsString('return $this->runtime->get($id);', $source);
+        static::assertStringNotContainsString('self::INLINED', $source);
     }
 
     public function testInlinableVariadicConstructorEmitsLeadingArgsAndStopsAtVariadic(): void
@@ -498,6 +654,88 @@ final class ContainerCompilerTest extends AbstractTestCase
     private function sourceQuotedKey(string $fqcn): string
     {
         return str_replace('\\', '\\\\', $fqcn);
+    }
+
+    /**
+     * Reads a compiled container's private `$instances` memo by reflection.
+     *
+     * @return array<string, mixed>
+     */
+    private function memoOf(CompiledContainerInterface $compiled): array
+    {
+        $memo = new ReflectionObject($compiled)
+            ->getProperty('instances')
+            ->getValue($compiled);
+        if (!is_array($memo)) {
+            static::fail('the compiled memo must be an array');
+        }
+
+        /** @var array<string, mixed> $memo */
+        return $memo;
+    }
+
+    /**
+     * @return list<string> The parity-oracle service ids.
+     */
+    private function parityIds(): array
+    {
+        return [
+            ResetCountingService::class,
+            LeafService::class,
+            'factory.resettable',
+            'factory.plain',
+            'prebuilt.resettable',
+            'prebuilt.plain',
+        ];
+    }
+
+    /**
+     * Registers the parity-oracle definition set: an inlined class, closure
+     * factories, and pre-registered objects — each in a Resettable and a
+     * non-Resettable variant. Objects are created per container so the reset
+     * counts of the two containers under comparison stay independent.
+     */
+    private function seedParity(FakeRuntimeContainer $container): void
+    {
+        $container->set(ResetCountingService::class, ResetCountingService::class);
+        $container->set(LeafService::class, LeafService::class);
+        $container->set('factory.resettable', static fn(): ResetCountingService => new ResetCountingService());
+        $container->set('factory.plain', static fn(): LeafService => new LeafService());
+        $container->set('prebuilt.resettable', new ResetCountingService());
+        $container->set('prebuilt.plain', new LeafService());
+    }
+
+    /**
+     * Runs $cycles get()/reset() request cycles against a parity-seeded container
+     * and returns the per-id reset counts (null for non-resettable services),
+     * asserting every instance keeps its identity across the cycles.
+     *
+     * @return array<string, int|null>
+     */
+    private function exerciseResetCycles(ContainerInterface $container, int $cycles): array
+    {
+        $first = [];
+        foreach ($this->parityIds() as $id) {
+            $first[$id] = $container->get($id);
+        }
+
+        for ($cycle = 0; $cycle < $cycles; $cycle++) {
+            $container->reset();
+            foreach ($this->parityIds() as $id) {
+                static::assertSame(
+                    $first[$id],
+                    $container->get($id),
+                    sprintf('"%s" must keep its identity across reset cycles', $id),
+                );
+            }
+        }
+
+        $counts = [];
+        foreach ($first as $id => $instance) {
+            $counts[$id] = $instance instanceof ResetCountingService ? $instance->resets : null;
+        }
+
+        return $counts;
     }
 
     /**

@@ -24,6 +24,8 @@ psr = ["Psr\\**"]
 namespace = "Waffle\\Commons\\Console"
 permit = [
     "Waffle\\Commons\\Console\\**",
+    # Worker-safety audit tooling (igor-php 0.7+): dev-only #[WorkerSafe] metadata, inert at runtime.
+    "IgorPhp\\IgorBundle\\Attribute\\**",
     "Waffle\\Commons\\Contracts\\**",
     "@layer:core",
     "@layer:psr",

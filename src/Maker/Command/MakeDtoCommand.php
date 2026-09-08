@@ -46,6 +46,7 @@ final readonly class MakeDtoCommand extends AbstractMakerCommand
         if ($className === null || mb_trim($className) === '') {
             throw new \InvalidArgumentException('[ERROR] DTO name is required (e.g. UserRegistrationDto).');
         }
+        $this->assertValidIdentifier($className);
 
         $fields = $positionals;
         $force = $input->hasOption('force') || $input->hasOption('f');
