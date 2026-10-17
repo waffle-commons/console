@@ -5,6 +5,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Released in lockstep with the Waffle Commons umbrella tag.
 
+## [Unreleased]
+
+### Added
+- **`queue:work` ([QUEUE-02]).** `Command\QueueWorkCommand` runs the queue worker against contracts only
+  (`QueueConsumerInterface`, `FailedMessageStoreInterface`, `MessageHandlerInterface`, `ResettableInterface`, the
+  PSR-20 clock, a PSR-3 logger, the tracer and the propagator); the application wires the driver in `bin/waffle`.
+  It retries with an exponential back-off, dead-letters a message with its full envelope after the last attempt,
+  resets the container after every message, recycles on a message count or a memory ceiling, drains on SIGTERM and
+  SIGINT through `pcntl`, and runs each message in a consumer span that continues the dispatcher's trace.
+  `Queue\WorkerOptions` reads and bounds its options (`--queue`, `--max-messages`, `--memory-limit`,
+  `--max-attempts`, `--backoff`, `--wait`).
+- The command carries no class-level `#[WorkerSafe(scope: 'cli')]`: unlike the one-shot commands, one invocation
+  handles thousands of messages. It is stateless (`final readonly`) instead.
+- Its tests send a real SIGTERM and SIGINT to the test process to prove the drain.
+
+### Dependencies
+- `psr/clock` and `psr/log` are direct requirements. `ext-pcntl` is suggested: without it, a signal stops the worker
+  at once, and the message in flight is delivered again once the queue reclaims it.
+
 ## [0.1.0-beta6] — 2026-09
 
 **Theme: code-generation and AOT hardening.**

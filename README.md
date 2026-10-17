@@ -30,6 +30,8 @@ composer require waffle-commons/console
 | `Waffle\Commons\Console\Command\RouteListCommand` | `route:list` — renders the compiled route table. |
 | `Waffle\Commons\Console\Command\SecurityAuditCommand` | `security:audit` — walks controllers and prints the resolved access ladder (`#[Rule]` / `#[Voter]`). |
 | `Waffle\Commons\Console\Command\MigrateCommand` | `db:migrate` — applies pending SQL migrations through the contracts `MigrationRunnerInterface`, then resets the pool. |
+| `Waffle\Commons\Console\Command\QueueWorkCommand` | `queue:work` — the queue worker (`[QUEUE-02]`): hands each message to the `MessageHandlerInterface` of its class, retries with back-off, dead-letters after the last attempt, resets the container after every message, and drains on SIGTERM/SIGINT. See [Queue worker](#-queue-worker-queuework). |
+| `Waffle\Commons\Console\Queue\WorkerOptions` | The worker's limits, read and validated from its options. |
 | `Waffle\Commons\Console\Command\MemoryAuditCommand` | `igor:audit` — streams the monorepo-wide Igor memory-leak audit through the contracts `AuditRunnerInterface`. |
 | `Waffle\Commons\Console\Command\DataWarmupCommand` | `data:warmup` — pre-compiles SQR trees / routing tables into OPcache shared memory through the contracts `DataWarmerInterface` (Beta-3). |
 | `Waffle\Commons\Console\Maker\Command\Make*Command` | The nine Waffle Maker scaffolders (RFC-020): `make:controller`, `make:dto`, `make:entity`, `make:repository`, `make:middleware`, `make:voter`, `make:command`, `make:http-client`, `make:event-pair`. |
@@ -67,6 +69,32 @@ $app->add(new RouteListCommand($router));
 
 exit($app->run()); // argv read from constructor, returns int exit code
 ```
+
+## 📬 Queue worker (`queue:work`)
+
+`QueueWorkCommand` depends on contracts only. The application wires the queue driver — for example the Redis
+Streams driver of `waffle-commons/queue` — and the message handlers in its `bin/waffle`.
+
+```bash
+bin/waffle queue:work [--queue=default] [--max-messages=1000] [--memory-limit=128] [--max-attempts=3] [--backoff=5] [--wait=1000]
+```
+
+- **Handling.** Each message goes to the handler of its class; a handled message is acknowledged.
+- **Retries.** A failed delivery is released for another attempt after `--backoff` seconds, doubled at each further
+  failure and capped at an hour. After `--max-attempts` failed deliveries, the message goes to the dead-letter store
+  with its envelope — whose attempts count every failed delivery — and the reason, then is acknowledged. A message
+  whose class has no handler fails like any other delivery.
+- **Reset.** The container is reset after every message, in a `finally`, as the HTTP worker resets it after every
+  request.
+- **Stopping.** On SIGTERM or SIGINT (with `ext-pcntl`), the message in flight is finished and settled, then the
+  worker exits 0; an idle worker stops within `--wait` milliseconds. A signal never interrupts a handler, so keep
+  handlers shorter than the termination grace period. After `--max-messages` messages or at `--memory-limit` MB,
+  the worker exits 0 so that its supervisor starts a fresh process. When the queue or the dead-letter store fails,
+  it exits 1, and the message in flight is delivered again once the queue reclaims it.
+- **Exit codes.** `0` stopped or recycled · `1` the queue failed · `64` an invalid option · `78` no handler, or two
+  handlers for one message class.
+- **Tracing.** Each message runs in a `Consumer` span, `process <queue>`, whose parent is the trace context the
+  dispatcher recorded in the envelope.
 
 ## 🪜 Public API
 
