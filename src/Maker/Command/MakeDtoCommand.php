@@ -60,11 +60,11 @@ final readonly class MakeDtoCommand extends AbstractMakerCommand
 
         $renderer = new TemplateRenderer();
         $compiled = $renderer->render($stub, [
-            'NAMESPACE' => (string) $resolution['namespace'],
-            'CLASS_NAME' => (string) $className,
-            'PROPERTIES' => (string) $generated['properties'],
-            'CONSTRUCTOR_PARAMS' => (string) $generated['constructorParams'],
-            'ASSIGNMENTS' => (string) $generated['assignments'],
+            'NAMESPACE' => $resolution['namespace'],
+            'CLASS_NAME' => $className,
+            'PROPERTIES' => $generated['properties'],
+            'CONSTRUCTOR_PARAMS' => $generated['constructorParams'],
+            'ASSIGNMENTS' => $generated['assignments'],
         ]);
 
         $this->writeFile($resolution['filepath'], $compiled, $force, $output);

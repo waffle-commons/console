@@ -17,7 +17,6 @@ use Waffle\Commons\Contracts\Data\Migration\MigrationRunnerInterface;
 use Waffle\Commons\Contracts\Service\ResettableInterface;
 use WaffleTests\Commons\Console\AbstractTestCase;
 
-use function array_column;
 use function implode;
 
 #[CoversClass(MigrationRollbackCommand::class)]
@@ -131,6 +130,11 @@ final class MigrationRollbackCommandTest extends AbstractTestCase
 
     private static function rendered(NullOutput $output): string
     {
-        return implode("\n", array_column($output->lines(), 0));
+        $lines = [];
+        foreach ($output->lines() as [$line]) {
+            $lines[] = $line;
+        }
+
+        return implode("\n", $lines);
     }
 }

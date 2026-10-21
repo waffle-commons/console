@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Waffle\Commons\Console\Maker;
 
 use Waffle\Commons\Console\Command\AbstractCommand;
+use Waffle\Commons\Console\Input\ArgvInput;
 use Waffle\Commons\Contracts\Console\InputInterface;
 use Waffle\Commons\Contracts\Console\OutputInterface;
 use Waffle\Commons\Utils\Service\ClassParser;
@@ -26,6 +27,22 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
     public function __construct()
     {
         $this->classParser = new ClassParser();
+    }
+
+    /**
+     * Names the positional arguments of a command line, in order. Only the argv parser holds them by
+     * position: any other {@see InputInterface} (a test double, a programmatic call) already carries its
+     * arguments by name, and is left as it is.
+     *
+     * @param list<string> $names
+     */
+    protected function bindArgumentNames(InputInterface $input, array $names): void
+    {
+        if (!$input instanceof ArgvInput) {
+            return;
+        }
+
+        $input->bindArgumentNames($names);
     }
 
     /**
@@ -113,7 +130,7 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
         $cwdStr = $cwd === false ? '.' : $cwd;
 
         $hasTargetOption = $input->getOption('target') !== null;
-        $target = (string) ($input->getOption('target') ?? $cwdStr);
+        $target = $input->getOption('target') ?? $cwdStr;
         $realPath = realpath($target);
 
         if ($realPath === false) {
@@ -124,7 +141,7 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
             }
         }
 
-        $resolved = rtrim((string) $realPath, '/');
+        $resolved = rtrim($realPath, '/');
 
         if (!$hasTargetOption && file_exists($resolved . '/composer.json')) {
             $resolved .= '/src';
@@ -164,43 +181,7 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
             throw new \RuntimeException("composer.json not found in parent directories of {$targetDir}.");
         }
 
-        $content = file_get_contents($composerJsonPath);
-        if ($content === false) {
-            throw new \RuntimeException("Failed to read composer.json at: {$composerJsonPath}");
-        }
-
-        $composerData = json_decode($content, true);
-        if (!is_array($composerData)) {
-            throw new \RuntimeException('composer.json format is invalid.');
-        }
-
-        $psr4 = $composerData['autoload']['psr-4'] ?? [];
-        if (!is_array($psr4)) {
-            $psr4 = [];
-        }
-
-        $baseDir = dirname($composerJsonPath);
-        $resolvedNamespace = '';
-
-        foreach ($psr4 as $namespacePrefix => $paths) {
-            $prefix = is_string($namespacePrefix) ? $namespacePrefix : '';
-            $pathList = is_array($paths) ? $paths : [$paths];
-            foreach ($pathList as $path) {
-                $pathStr = is_string($path) ? $path : '';
-                $real = realpath($baseDir . '/' . trim($pathStr, '/'));
-                $fullPath = rtrim($real !== false ? $real : $baseDir . '/' . trim($pathStr, '/'), '/');
-                if (str_starts_with($targetDir, $fullPath)) {
-                    $subPath = substr($targetDir, strlen($fullPath));
-                    $subNamespace = str_replace('/', '\\', trim($subPath, '/'));
-
-                    $resolvedNamespace = rtrim($prefix, '\\');
-                    if ($subNamespace !== '') {
-                        $resolvedNamespace .= '\\' . $subNamespace;
-                    }
-                    break 2;
-                }
-            }
-        }
+        $resolvedNamespace = Psr4Roots::of($composerJsonPath)->namespaceOf($targetDir);
 
         // Cross-check / validation layer using ClassParser with existing sibling files
         if (is_dir($targetDir)) {
@@ -298,7 +279,6 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
      */
     private function hasValidSyntax(string $path): bool
     {
-        /** @var list<resource> $pipes */
         $pipes = [];
         $process = proc_open([PHP_BINARY, '-l', $path], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
 
@@ -306,13 +286,13 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
             throw new \RuntimeException('Failed to spawn the PHP syntax checker.');
         }
 
-        // Must drain both pipes before closing them: an unread pipe can make the
+        // Must drain every pipe before closing it: an unread pipe can make the
         // child receive SIGPIPE while writing its "No syntax errors" message,
         // turning a genuinely valid file into a false-positive lint failure.
-        stream_get_contents($pipes[1]);
-        stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
+        foreach ($pipes as $pipe) {
+            stream_get_contents($pipe);
+            fclose($pipe);
+        }
 
         return proc_close($process) === 0;
     }

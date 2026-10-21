@@ -30,7 +30,7 @@ final readonly class MakeCommandCommand extends AbstractMakerCommand
     #[\Override]
     public function execute(InputInterface $input, OutputInterface $output): int
     {
-        $input->bindArgumentNames(['name']);
+        $this->bindArgumentNames($input, ['name']);
         $className = $input->getArgument('name');
 
         if ($className === null || mb_trim($className) === '') {
@@ -38,7 +38,7 @@ final readonly class MakeCommandCommand extends AbstractMakerCommand
         }
         $this->assertValidIdentifier($className);
 
-        $commandName = (string) ($input->getOption('command-name') ?? 'app:custom-task');
+        $commandName = $input->getOption('command-name') ?? 'app:custom-task';
         $this->assertSafeForQuotedStub($commandName, 'command name');
         $force = $input->hasOption('force') || $input->hasOption('f');
 
@@ -49,9 +49,9 @@ final readonly class MakeCommandCommand extends AbstractMakerCommand
         $renderer = new TemplateRenderer();
 
         $compiled = $renderer->render($stub, [
-            'NAMESPACE' => (string) $resolution['namespace'],
-            'CLASS_NAME' => (string) $className,
-            'COMMAND_NAME' => (string) $commandName,
+            'NAMESPACE' => $resolution['namespace'],
+            'CLASS_NAME' => $className,
+            'COMMAND_NAME' => $commandName,
         ]);
 
         $this->writeFile($resolution['filepath'], $compiled, $force, $output);

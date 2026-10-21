@@ -183,7 +183,8 @@ final readonly class SensitiveComparisonScanner
             }
 
             // A literal operand makes this a value check, not a two-secret compare.
-            if ($this->isLiteralToken($tokens[$leftIndex]) || $this->isLiteralToken($tokens[$rightIndex])) {
+            // Both indexes come from meaningfulIndex(), so the tokens exist: a missing one reads as no literal.
+            if ($this->isLiteralToken($tokens[$leftIndex] ?? '') || $this->isLiteralToken($tokens[$rightIndex] ?? '')) {
                 continue;
             }
 

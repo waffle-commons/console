@@ -14,50 +14,15 @@ use Waffle\Commons\Contracts\Console\Enum\ExitCode;
 use Waffle\Commons\Contracts\Console\Enum\Verbosity;
 use Waffle\Commons\Contracts\Console\InputInterface;
 use Waffle\Commons\Contracts\Console\OutputInterface;
+use WaffleTests\Commons\Console\Helper\RecordingCommand;
 
 #[CoversClass(ConsoleApplication::class)]
 #[AllowMockObjectsWithoutExpectations]
 final class ConsoleApplicationTest extends AbstractTestCase
 {
-    private function command(string $name, string $description = '', int $exit = 0): CommandInterface
+    private function command(string $name, string $description = '', int $exit = 0): RecordingCommand
     {
-        return new class($name, $description, $exit) implements CommandInterface {
-            public bool $invoked = false;
-            public ?InputInterface $capturedInput = null;
-
-            public function __construct(
-                private string $name,
-                private string $description,
-                private int $exit,
-            ) {}
-
-            public function getName(): string
-            {
-                return $this->name;
-            }
-
-            public function getDescription(): string
-            {
-                return $this->description;
-            }
-
-            public function getHelp(): string
-            {
-                return '';
-            }
-
-            public function getSynopsis(): string
-            {
-                return $this->name;
-            }
-
-            public function execute(InputInterface $input, OutputInterface $output): int
-            {
-                $this->invoked = true;
-                $this->capturedInput = $input;
-                return $this->exit;
-            }
-        };
+        return new RecordingCommand($name, $description, $exit);
     }
 
     public function testNameAndVersion(): void
@@ -127,7 +92,7 @@ final class ConsoleApplicationTest extends AbstractTestCase
         $app->add($command);
 
         static::assertSame(ExitCode::SUCCESS->value, $app->run());
-        static::assertTrue($command->invoked); // @phpstan-ignore-line
+        static::assertTrue($command->invoked);
     }
 
     public function testUnknownCommandSurfacedAsFailureExitCode(): void
@@ -174,7 +139,7 @@ final class ConsoleApplicationTest extends AbstractTestCase
 
         static::assertSame(ExitCode::FAILURE->value, $app->run());
         static::assertNotEmpty($output->errors());
-        static::assertStringContainsString('something broke', $output->errors()[0]);
+        static::assertStringContainsString('something broke', $output->errors()[0] ?? '');
     }
 
     public function testVerboseFlagSetsVerbosity(): void

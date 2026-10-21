@@ -30,7 +30,7 @@ final readonly class MakeControllerCommand extends AbstractMakerCommand
     #[\Override]
     public function execute(InputInterface $input, OutputInterface $output): int
     {
-        $input->bindArgumentNames(['name']);
+        $this->bindArgumentNames($input, ['name']);
         $className = $input->getArgument('name');
 
         if ($className === null || mb_trim($className) === '') {
@@ -38,8 +38,8 @@ final readonly class MakeControllerCommand extends AbstractMakerCommand
         }
         $this->assertValidIdentifier($className);
 
-        $route = (string) ($input->getOption('route') ?? '/');
-        $priority = (string) ($input->getOption('priority') ?? '0');
+        $route = $input->getOption('route') ?? '/';
+        $priority = $input->getOption('priority') ?? '0';
         $this->assertSafeForQuotedStub($route, 'route');
         $this->assertValidInteger($priority, 'priority');
         $force = $input->hasOption('force') || $input->hasOption('f');
@@ -51,10 +51,10 @@ final readonly class MakeControllerCommand extends AbstractMakerCommand
         $renderer = new TemplateRenderer();
 
         $compiled = $renderer->render($stub, [
-            'NAMESPACE' => (string) $resolution['namespace'],
-            'CLASS_NAME' => (string) $className,
-            'ROUTE' => (string) $route,
-            'PRIORITY' => (string) $priority,
+            'NAMESPACE' => $resolution['namespace'],
+            'CLASS_NAME' => $className,
+            'ROUTE' => $route,
+            'PRIORITY' => $priority,
         ]);
 
         $this->writeFile($resolution['filepath'], $compiled, $force, $output);

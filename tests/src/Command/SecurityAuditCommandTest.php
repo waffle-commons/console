@@ -118,7 +118,7 @@ final class SecurityAuditCommandTest extends AbstractTestCase
 
         static::assertSame(ExitCode::USAGE->value, $exit);
         static::assertNotEmpty($output->errors());
-        static::assertStringContainsString('UNGUARDED', $output->errors()[0]);
+        static::assertStringContainsString('UNGUARDED', $output->errors()[0] ?? '');
     }
 
     public function testNonExistentControllerProducesUnguardedRoute(): void

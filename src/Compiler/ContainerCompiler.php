@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Waffle\Commons\Console\Compiler;
 
-use Closure;
 use ReflectionClass;
 use ReflectionIntersectionType;
 use ReflectionNamedType;
@@ -117,7 +116,10 @@ final class ContainerCompiler
      * reflection — keeping this component dependent only on the container
      * **contract**, never the concrete `Waffle\Commons\Container` package.
      *
-     * @return array<string, mixed> id => concrete (class-string|object|Closure|callable)
+     * Only the definitions whose concrete is a class name are kept: closures and
+     * pre-built objects are passthroughs, never inlined.
+     *
+     * @return array<string, string> id => concrete class name
      * @throws CompilerException
      */
     private function readDefinitions(ContainerInterface $container): array
@@ -130,18 +132,19 @@ final class ContainerCompiler
             ));
         }
 
-        $value = $reflection->getProperty('definitions')->getValue($container);
-        if (!is_array($value)) {
+        // The property is read untyped: it is kept in a one-element list and
+        // narrowed in place, never bound on its own.
+        $value = [$reflection->getProperty('definitions')->getValue($container)];
+        if (!is_array($value[0])) {
             throw new CompilerException('Container "definitions" property is not an array.');
         }
 
         $definitions = [];
-        foreach ($value as $id => $concrete) {
-            if (!is_string($id)) {
-                continue;
+        foreach (array_keys($value[0]) as $id) {
+            $concrete = [$value[0][$id] ?? null];
+            if (is_string($id) && is_string($concrete[0])) {
+                $definitions[$id] = $concrete[0];
             }
-
-            $definitions[$id] = $concrete;
         }
 
         return $definitions;
@@ -156,9 +159,9 @@ final class ContainerCompiler
      *
      * @return class-string|null
      */
-    private function inlinableClass(mixed $concrete): ?string
+    private function inlinableClass(string $concrete): ?string
     {
-        if (!is_string($concrete) || !class_exists($concrete)) {
+        if (!class_exists($concrete)) {
             return null;
         }
 

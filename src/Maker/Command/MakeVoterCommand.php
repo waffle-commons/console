@@ -30,7 +30,7 @@ final readonly class MakeVoterCommand extends AbstractMakerCommand
     #[\Override]
     public function execute(InputInterface $input, OutputInterface $output): int
     {
-        $input->bindArgumentNames(['name']);
+        $this->bindArgumentNames($input, ['name']);
         $className = $input->getArgument('name');
 
         if ($className === null || mb_trim($className) === '') {
@@ -47,8 +47,8 @@ final readonly class MakeVoterCommand extends AbstractMakerCommand
         $renderer = new TemplateRenderer();
 
         $compiled = $renderer->render($stub, [
-            'NAMESPACE' => (string) $resolution['namespace'],
-            'CLASS_NAME' => (string) $className,
+            'NAMESPACE' => $resolution['namespace'],
+            'CLASS_NAME' => $className,
         ]);
 
         $this->writeFile($resolution['filepath'], $compiled, $force, $output);

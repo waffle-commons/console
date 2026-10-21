@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Waffle\Commons\Console\Maker\Command;
 
 use Psr\Clock\ClockInterface;
-use Waffle\Commons\Console\Input\ArgvInput;
 use Waffle\Commons\Console\Maker\AbstractMakerCommand;
 use Waffle\Commons\Console\Maker\TemplateRenderer;
 use Waffle\Commons\Contracts\Console\Enum\ExitCode;
@@ -70,9 +69,7 @@ final readonly class MakeMigrationCommand extends AbstractMakerCommand
     #[\Override]
     public function execute(InputInterface $input, OutputInterface $output): int
     {
-        if ($input instanceof ArgvInput) {
-            $input->bindArgumentNames(['name']);
-        }
+        $this->bindArgumentNames($input, ['name']);
         $name = $input->getArgument('name');
 
         if ($name === null || mb_trim($name) === '') {

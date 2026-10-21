@@ -201,7 +201,7 @@ final class QueueWorkCommandTest extends AbstractTestCase
         static::assertCount(1, $this->failed->stored);
         static::assertSame(
             'Waffle\\Commons\\Console\\Exception\\ConsoleException: No handler is registered for ' . Pong::class . '.',
-            $this->failed->stored[0][1],
+            $this->failed->stored[0][1] ?? null,
         );
         static::assertSame(['stray'], $this->ids($consumer->acknowledged));
     }

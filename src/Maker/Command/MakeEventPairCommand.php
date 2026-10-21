@@ -30,7 +30,7 @@ final readonly class MakeEventPairCommand extends AbstractMakerCommand
     #[\Override]
     public function execute(InputInterface $input, OutputInterface $output): int
     {
-        $input->bindArgumentNames(['name']);
+        $this->bindArgumentNames($input, ['name']);
         $className = $input->getArgument('name');
 
         if ($className === null || mb_trim($className) === '') {
@@ -38,7 +38,7 @@ final readonly class MakeEventPairCommand extends AbstractMakerCommand
         }
         $this->assertValidIdentifier($className);
 
-        $baseName = preg_replace('/(Event|Listener)$/', '', $className);
+        $baseName = preg_replace('/(Event|Listener)$/', '', $className) ?? $className;
         $eventName = $baseName . 'Event';
         $listenerName = $baseName . 'Listener';
         $force = $input->hasOption('force') || $input->hasOption('f');
@@ -60,17 +60,17 @@ final readonly class MakeEventPairCommand extends AbstractMakerCommand
         // 1. Generate Event
         $eventStub = $this->loadStub('event');
         $eventCompiled = $renderer->render($eventStub, [
-            'NAMESPACE' => (string) $eventRes['namespace'],
-            'CLASS_NAME' => (string) $eventName,
+            'NAMESPACE' => $eventRes['namespace'],
+            'CLASS_NAME' => $eventName,
         ]);
         $this->writeFile($eventRes['filepath'], $eventCompiled, $force, $output);
 
         // 2. Generate Listener
         $listenerStub = $this->loadStub('listener');
         $listenerCompiled = $renderer->render($listenerStub, [
-            'NAMESPACE' => (string) $listenerRes['namespace'],
-            'CLASS_NAME' => (string) $listenerName,
-            'EVENT_CLASS_NAME' => '\\' . (string) $eventRes['namespace'] . '\\' . (string) $eventName,
+            'NAMESPACE' => $listenerRes['namespace'],
+            'CLASS_NAME' => $listenerName,
+            'EVENT_CLASS_NAME' => '\\' . $eventRes['namespace'] . '\\' . $eventName,
         ]);
         $this->writeFile($listenerRes['filepath'], $listenerCompiled, $force, $output);
 

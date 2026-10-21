@@ -7,6 +7,9 @@ Released in lockstep with the Waffle Commons umbrella tag.
 
 ## [Unreleased]
 
+### Changed
+- **Mago analyzes the whole component with no ignore list.** The Beta-0 list silenced 56 analyzer codes in `src/` and `tests/` and hid 128 findings, now fixed natively: redundant casts, untyped JSON and reflection values (kept in one-element lists and narrowed in place: `Maker\Psr4Roots` reads `autoload.psr-4`, the container compiler keeps only class-name definitions), possibly-missing indexes, typed test doubles. The makers no longer call `bindArgumentNames()` through the `InputInterface` contract, which lacks it: `AbstractMakerCommand::bindArgumentNames()` binds positional names on the argv parser and leaves any other input, already named, as it is.
+
 ### Added
 - **`queue:work` ([QUEUE-02]).** `Command\QueueWorkCommand` runs the queue worker against contracts only
   (`QueueConsumerInterface`, `FailedMessageStoreInterface`, `MessageHandlerInterface`, `ResettableInterface`, the

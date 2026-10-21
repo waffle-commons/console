@@ -30,7 +30,7 @@ final readonly class MakeHttpClientCommand extends AbstractMakerCommand
     #[\Override]
     public function execute(InputInterface $input, OutputInterface $output): int
     {
-        $input->bindArgumentNames(['name']);
+        $this->bindArgumentNames($input, ['name']);
         $className = $input->getArgument('name');
 
         if ($className === null || mb_trim($className) === '') {
@@ -38,7 +38,7 @@ final readonly class MakeHttpClientCommand extends AbstractMakerCommand
         }
         $this->assertValidIdentifier($className);
 
-        $baseUri = (string) ($input->getOption('base-uri') ?? 'http://api.internal');
+        $baseUri = $input->getOption('base-uri') ?? 'http://api.internal';
         $this->assertSafeForQuotedStub($baseUri, 'base URI');
         $force = $input->hasOption('force') || $input->hasOption('f');
 
@@ -49,9 +49,9 @@ final readonly class MakeHttpClientCommand extends AbstractMakerCommand
         $renderer = new TemplateRenderer();
 
         $compiled = $renderer->render($stub, [
-            'NAMESPACE' => (string) $resolution['namespace'],
-            'CLASS_NAME' => (string) $className,
-            'BASE_URI' => (string) $baseUri,
+            'NAMESPACE' => $resolution['namespace'],
+            'CLASS_NAME' => $className,
+            'BASE_URI' => $baseUri,
         ]);
 
         $this->writeFile($resolution['filepath'], $compiled, $force, $output);

@@ -59,8 +59,8 @@ final readonly class MakeRepositoryCommand extends AbstractMakerCommand
 
         $mapperName = $entityName . 'Mapper';
         $force = $input->hasOption('force') || $input->hasOption('f');
-        $identity = (string) ($input->getOption('identity') ?? 'id');
-        $table = (string) ($input->getOption('table') ?? strtolower($entityName) . 's');
+        $identity = $input->getOption('identity') ?? 'id';
+        $table = $input->getOption('table') ?? strtolower($entityName) . 's';
 
         // $identity lands as a BARE `$entity->{{ IDENTITY }}` property-access
         // expression in the mapper stub (no surrounding quotes at all) — the
@@ -85,7 +85,7 @@ final readonly class MakeRepositoryCommand extends AbstractMakerCommand
 
         $targetDir = $this->resolveTargetDir($input, 'Repository');
         $resolution = $this->resolveNamespaceAndPath($targetDir, $repositoryName);
-        $namespace = (string) $resolution['namespace'];
+        $namespace = $resolution['namespace'];
 
         // Convention: the entity lives in the sibling Entity namespace
         // (src/Repository ⇒ src/Entity); same namespace otherwise.

@@ -19,7 +19,7 @@ final class NullOutputTest extends AbstractTestCase
         $output->writeLine('world');
 
         static::assertCount(2, $output->lines());
-        static::assertSame('hello', $output->lines()[0][0]);
+        static::assertSame('hello', $output->lines()[0][0] ?? null);
     }
 
     public function testCapturesErrorsIndependently(): void
@@ -30,7 +30,7 @@ final class NullOutputTest extends AbstractTestCase
 
         static::assertCount(1, $output->lines());
         static::assertCount(1, $output->errors());
-        static::assertSame('boom', $output->errors()[0]);
+        static::assertSame('boom', $output->errors()[0] ?? null);
     }
 
     public function testRespectsVerbosityGating(): void
@@ -50,8 +50,8 @@ final class NullOutputTest extends AbstractTestCase
         $output->writeLine('finished');
 
         static::assertCount(2, $output->lines());
-        static::assertSame('partial', $output->lines()[0][0]);
-        static::assertSame('finished', $output->lines()[1][0]);
+        static::assertSame('partial', $output->lines()[0][0] ?? null);
+        static::assertSame('finished', $output->lines()[1][0] ?? null);
     }
 
     public function testVerbosityRoundtrip(): void
