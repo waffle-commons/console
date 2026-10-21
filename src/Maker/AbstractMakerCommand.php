@@ -236,6 +236,25 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
      */
     protected function writeFile(string $filepath, string $content, bool $force, OutputInterface $output): void
     {
+        $this->write($filepath, $content, $force, $output, lintAsPhp: true);
+    }
+
+    /**
+     * The same atomic write for a file that is not PHP source (an SQL migration, say),
+     * which `php -l` cannot check.
+     */
+    protected function writeTextFile(string $filepath, string $content, bool $force, OutputInterface $output): void
+    {
+        $this->write($filepath, $content, $force, $output, lintAsPhp: false);
+    }
+
+    private function write(
+        string $filepath,
+        string $content,
+        bool $force,
+        OutputInterface $output,
+        bool $lintAsPhp,
+    ): void {
         $dir = dirname($filepath);
         if (!is_dir($dir)) {
             if (!mkdir($dir, 0o755, true) && !is_dir($dir)) {
@@ -254,7 +273,7 @@ abstract readonly class AbstractMakerCommand extends AbstractCommand
             throw new \RuntimeException("Failed to write to temporary file: {$tmpFile}");
         }
 
-        if (!$this->hasValidSyntax($tmpFile)) {
+        if ($lintAsPhp && !$this->hasValidSyntax($tmpFile)) {
             unlink($tmpFile);
             throw new \RuntimeException(
                 "Generated content for {$filepath} failed a PHP syntax check; refusing to write it.",

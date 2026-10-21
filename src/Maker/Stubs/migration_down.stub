@@ -1,0 +1,4 @@
+-- {{ VERSION }} (down): run by `bin/waffle db:rollback` to revert {{ VERSION }}.sql.
+-- Write the statements that undo it below. When it cannot be undone, delete this file:
+-- db:rollback then stops at this version instead of reverting it.
+

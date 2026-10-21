@@ -30,11 +30,13 @@ composer require waffle-commons/console
 | `Waffle\Commons\Console\Command\RouteListCommand` | `route:list` — renders the compiled route table. |
 | `Waffle\Commons\Console\Command\SecurityAuditCommand` | `security:audit` — walks controllers and prints the resolved access ladder (`#[Rule]` / `#[Voter]`). |
 | `Waffle\Commons\Console\Command\MigrateCommand` | `db:migrate` — applies pending SQL migrations through the contracts `MigrationRunnerInterface`, then resets the pool. |
+| `Waffle\Commons\Console\Command\MigrationStatusCommand` | `db:status` — lists every migration version (applied, pending or missing) with its application time and whether it has a down script (`[OPS-03]`). |
+| `Waffle\Commons\Console\Command\MigrationRollbackCommand` | `db:rollback [--steps=N]` — reverts the N most recent versions (1 by default) through their `.down.sql` scripts, after checking every one of them (`[OPS-03]`). |
 | `Waffle\Commons\Console\Command\QueueWorkCommand` | `queue:work` — the queue worker (`[QUEUE-02]`): hands each message to the `MessageHandlerInterface` of its class, retries with back-off, dead-letters after the last attempt, resets the container after every message, and drains on SIGTERM/SIGINT. See [Queue worker](#-queue-worker-queuework). |
 | `Waffle\Commons\Console\Queue\WorkerOptions` | The worker's limits, read and validated from its options. |
 | `Waffle\Commons\Console\Command\MemoryAuditCommand` | `igor:audit` — streams the monorepo-wide Igor memory-leak audit through the contracts `AuditRunnerInterface`. |
 | `Waffle\Commons\Console\Command\DataWarmupCommand` | `data:warmup` — pre-compiles SQR trees / routing tables into OPcache shared memory through the contracts `DataWarmerInterface` (Beta-3). |
-| `Waffle\Commons\Console\Maker\Command\Make*Command` | The nine Waffle Maker scaffolders (RFC-020): `make:controller`, `make:dto`, `make:entity`, `make:repository`, `make:middleware`, `make:voter`, `make:command`, `make:http-client`, `make:event-pair`. |
+| `Waffle\Commons\Console\Maker\Command\Make*Command` | The ten Waffle Maker scaffolders (RFC-020): `make:controller`, `make:dto`, `make:entity`, `make:repository`, `make:middleware`, `make:voter`, `make:command`, `make:http-client`, `make:event-pair`, and `make:migration` (`[OPS-03]`: a dated `Version<YYYYMMDDNN>_<Name>.sql` and its `.down.sql`). |
 | `Waffle\Commons\Console\Input\ArgvInput` | `InputInterface` implementation parsing `argv`. |
 | `Waffle\Commons\Console\Output\StreamOutput` | Default `OutputInterface` writing to `STDOUT` / `STDERR`. |
 | `Waffle\Commons\Console\Output\NullOutput` | Silent `OutputInterface` for tests / quiet runs. |

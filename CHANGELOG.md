@@ -19,6 +19,18 @@ Released in lockstep with the Waffle Commons umbrella tag.
 - The command carries no class-level `#[WorkerSafe(scope: 'cli')]`: unlike the one-shot commands, one invocation
   handles thousands of messages. It is stateless (`final readonly`) instead.
 - Its tests send a real SIGTERM and SIGINT to the test process to prove the drain.
+- **Migration lifecycle ([OPS-03]).** `Command\MigrationStatusCommand` (`db:status`) lists every version found on
+  disk or in the migration log as applied, pending or missing, with its application time and whether it has a down
+  script. `Command\MigrationRollbackCommand` (`db:rollback [--steps=N]`) reverts the N most recent versions, 1 by
+  default; a `--steps` that is not a whole number of at least 1 exits 64 (usage) before the database is touched.
+  Both depend on contracts only (`MigrationRunnerInterface`, `ResettableInterface`) and reset the pool on the way
+  out, like `db:migrate`.
+- `Maker\Command\MakeMigrationCommand` (`make:migration <Name>`) writes `Version<YYYYMMDD><NN>_<Name>.sql` and its
+  `.down.sql` into the migrations directory (the `$migrationsPath` the application passes, or `--target=`): the date
+  comes from the injected PSR-20 clock, NN is the day's next free number (01 to 99). Both files hold only comments,
+  which the runner refuses, so an unedited file is never logged.
+- `AbstractMakerCommand::writeTextFile()`: the same atomic write as `writeFile()`, without the `php -l` check, for
+  output that is not PHP source.
 
 ### Dependencies
 - `psr/clock` and `psr/log` are direct requirements. `ext-pcntl` is suggested: without it, a signal stops the worker
