@@ -9,6 +9,7 @@ Released in lockstep with the Waffle Commons umbrella tag.
 
 ### Changed
 - **Mago analyzes the whole component with no ignore list.** The Beta-0 list silenced 56 analyzer codes in `src/` and `tests/` and hid 128 findings, now fixed natively: redundant casts, untyped JSON and reflection values (kept in one-element lists and narrowed in place: `Maker\Psr4Roots` reads `autoload.psr-4`, the container compiler keeps only class-name definitions), possibly-missing indexes, typed test doubles. The makers no longer call `bindArgumentNames()` through the `InputInterface` contract, which lacks it: `AbstractMakerCommand::bindArgumentNames()` binds positional names on the argv parser and leaves any other input, already named, as it is.
+- **One instance per service in AOT mode (CARRY-06).** The compiled container's `get()` builds the services it inlines through the runtime container's `memoise()` (`waffle-commons/container` 0.1.0-beta7) and keeps its own memo as a fast path. A closure factory or an autowired service that resolves the same id through the runtime now gets the same instance. Before, it built a second one: Beta-6 accepted that as a known constraint. `reset()` only delegates now: the runtime's cascade resets each service once. The compiler refuses a runtime container class that lacks `memoise()` when any definition is inlinable. Artefacts compiled before this change keep their old behaviour until `container:compile` runs again.
 
 ### Added
 - **`queue:work` ([QUEUE-02]).** `Command\QueueWorkCommand` runs the queue worker against contracts only

@@ -25,6 +25,7 @@ use WaffleTests\Commons\Console\Compiler\Fixture\MidService;
 use WaffleTests\Commons\Console\Compiler\Fixture\NonArrayDefinitionsContainer;
 use WaffleTests\Commons\Console\Compiler\Fixture\NullableUnionDependentService;
 use WaffleTests\Commons\Console\Compiler\Fixture\OptionalDependentService;
+use WaffleTests\Commons\Console\Compiler\Fixture\ResetCountingConsumer;
 use WaffleTests\Commons\Console\Compiler\Fixture\ResetCountingService;
 use WaffleTests\Commons\Console\Compiler\Fixture\ResettableLeafService;
 use WaffleTests\Commons\Console\Compiler\Fixture\RootService;
@@ -321,7 +322,7 @@ final class ContainerCompilerTest extends AbstractTestCase
         $compiled->reset();
 
         static::assertSame(1, $passthrough->resets, 'passthrough must reset exactly once (runtime cascade only)');
-        static::assertSame(1, $inlined->resets, 'inlined service must reset exactly once (compiled cascade only)');
+        static::assertSame(1, $inlined->resets, 'inlined service must reset exactly once (runtime cascade only)');
 
         // SEC-04: reset() never evicts — the inlined id survives in the memo with
         // its identity intact, and the passthrough still is not there.
@@ -354,6 +355,11 @@ final class ContainerCompilerTest extends AbstractTestCase
             'the guard must delegate non-inlined ids with an immediate return (no memoisation)',
         );
         static::assertStringNotContainsString('default =>', $source, 'the match must not have a passthrough arm');
+        static::assertStringContainsString(
+            '$instance = $this->runtime->memoise($id, fn(): object => match ($id) {',
+            $source,
+            'an inlined id must be built through the runtime container memo (CARRY-06)',
+        );
 
         // Guard first, memo lookup second: the delegate path cannot touch the memo.
         $memoAt = strpos($source, 'array_key_exists($id, $this->instances)');
@@ -400,6 +406,88 @@ final class ContainerCompilerTest extends AbstractTestCase
         static::assertNull($compiledCounts[LeafService::class]);
         static::assertNull($compiledCounts['factory.plain']);
         static::assertNull($compiledCounts['prebuilt.plain']);
+    }
+
+    public function testAnInlinedServiceTheRuntimeBuiltFirstIsTheOneTheCompiledGetReturns(): void
+    {
+        // CARRY-06: a closure factory resolving an INLINED id goes through the runtime,
+        // which builds it by reflection. The compiled get() used to build a second
+        // instance next to it (the accepted beta6 constraint); it now adopts the
+        // runtime's through memoise().
+        $input = new FakeRuntimeContainer();
+        $this->seed($input);
+        $input->set('needs.leaf', static fn(ContainerInterface $c): object => self::objectOf($c, LeafService::class));
+        $compiled = $this->loadCompiledContainer($input, 'RuntimeFirst');
+
+        $viaRuntime = self::objectOf($compiled, 'needs.leaf');
+
+        static::assertSame($viaRuntime, $compiled->get(LeafService::class));
+    }
+
+    public function testAnInlinedServiceTheCompiledGetBuiltFirstIsTheOneTheRuntimeReturns(): void
+    {
+        $input = new FakeRuntimeContainer();
+        $this->seed($input);
+        $input->set('needs.leaf', static fn(ContainerInterface $c): object => self::objectOf($c, LeafService::class));
+        $compiled = $this->loadCompiledContainer($input, 'CompiledFirst');
+
+        $viaCompiled = self::objectOf($compiled, LeafService::class);
+
+        static::assertSame(
+            $viaCompiled,
+            $compiled->get('needs.leaf'),
+            'a closure resolving the id gets the compiled instance',
+        );
+        static::assertSame($viaCompiled, $input->get(LeafService::class), 'the runtime holds the compiled instance');
+    }
+
+    public function testAnInlinedServiceReachedThroughBothPathsResetsOnce(): void
+    {
+        // The compiled get() inlines the counter; the runtime autowires a consumer of it
+        // (unregistered, so a passthrough). One instance, so the runtime cascade, the only
+        // one, resets it once.
+        $input = new FakeRuntimeContainer();
+        $input->set(ResetCountingService::class, ResetCountingService::class);
+        $compiled = $this->loadCompiledContainer($input, 'SharedResetOnce');
+
+        $inlined = self::serviceOf($compiled, ResetCountingService::class, ResetCountingService::class);
+        $consumer = self::serviceOf($compiled, ResetCountingConsumer::class, ResetCountingConsumer::class);
+        static::assertSame($inlined, $consumer->counter);
+
+        $compiled->reset();
+
+        static::assertSame(1, $inlined->resets, 'one instance, reset once, by the runtime cascade');
+    }
+
+    public function testCompilingAgainstARuntimeWithoutMemoiseThrows(): void
+    {
+        $input = new FakeRuntimeContainer();
+        $this->seed($input);
+
+        $this->expectException(CompilerException::class);
+        $this->expectExceptionMessage('memoise(string $id, Closure $build)');
+
+        new ContainerCompiler()->compile(
+            $input,
+            'WaffleTests\\Commons\\Console\\Compiler\\Generated',
+            'CompiledWithoutMemoise',
+            NonArrayDefinitionsContainer::class,
+        );
+    }
+
+    public function testARuntimeWithoutMemoiseCompilesWhenNothingIsInlined(): void
+    {
+        $input = new FakeRuntimeContainer();
+        $input->set('only.factory', static fn(): LeafService => new LeafService());
+
+        $source = new ContainerCompiler()->compile(
+            $input,
+            'WaffleTests\\Commons\\Console\\Compiler\\Generated',
+            'CompiledDelegateOnly',
+            NonArrayDefinitionsContainer::class,
+        );
+
+        static::assertStringNotContainsString('->memoise(', $source);
     }
 
     public function testCompilingAContainerWithoutDefinitionsMapThrows(): void

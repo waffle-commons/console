@@ -54,13 +54,28 @@ final class FakeRuntimeContainer implements ContainerInterface
             throw new RuntimeException(sprintf('Service "%s" not found.', $id));
         }
 
+        return $this->memoise($id, fn(): object => $this->build($id));
+    }
+
+    /**
+     * Mirrors `Container::memoise()`: the held instance, else `$build`'s, memoised under the
+     * circular-dependency guard. The compiled `get()` builds its inlined services through it.
+     *
+     * @param Closure(): object $build
+     */
+    public function memoise(string $id, Closure $build): object
+    {
+        if (array_key_exists($id, $this->instances)) {
+            return $this->instances[$id];
+        }
+
         if (array_key_exists($id, $this->resolving)) {
             throw new RuntimeException(sprintf('Circular dependency on "%s".', $id));
         }
 
         $this->resolving[$id] = true;
         try {
-            $instance = $this->build($id);
+            $instance = $build();
             $this->instances[$id] = $instance;
         } finally {
             unset($this->resolving[$id]);
