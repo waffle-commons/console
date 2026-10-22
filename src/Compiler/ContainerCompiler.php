@@ -92,7 +92,7 @@ final class ContainerCompiler
      * @return string The generated PHP source (including the opening `<?php` tag).
      * @throws CompilerException When the container exposes no inspectable definition map, or when
      *                           a definition is inlinable and the runtime container class has no
-     *                           `memoise()` method.
+     *                           `memoise()` method or cannot be loaded.
      */
     public function compile(
         ContainerInterface $container,
