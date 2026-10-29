@@ -5,7 +5,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Released in lockstep with the Waffle Commons umbrella tag.
 
-## [Unreleased]
+## [0.1.0-beta7] — 2026-11
+
+**Theme: `queue:work`, the migration lifecycle commands and one instance per service in AOT mode.**
 
 ### Changed
 - **Mago analyzes the whole component with no ignore list.** The Beta-0 list silenced 56 analyzer codes in `src/` and `tests/` and hid 128 findings, now fixed natively: redundant casts, untyped JSON and reflection values (kept in one-element lists and narrowed in place: `Maker\Psr4Roots` reads `autoload.psr-4`, the container compiler keeps only class-name definitions), possibly-missing indexes, typed test doubles. The makers no longer call `bindArgumentNames()` through the `InputInterface` contract, which lacks it: `AbstractMakerCommand::bindArgumentNames()` binds positional names on the argv parser and leaves any other input, already named, as it is.
