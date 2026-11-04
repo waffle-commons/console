@@ -28,7 +28,7 @@ composer require waffle-commons/console
 | `Waffle\Commons\Console\Command\AbstractCommand` | Base class — implements `CommandInterface` with shared helpers. |
 | `Waffle\Commons\Console\Command\CacheClearCommand` | `cache:clear` — flushes the configured `CacheInterface` backend. |
 | `Waffle\Commons\Console\Command\RouteListCommand` | `route:list` — renders the compiled route table. |
-| `Waffle\Commons\Console\Command\SecurityAuditCommand` | `security:audit` — walks controllers and prints the resolved access ladder (`#[Rule]` / `#[Voter]`). |
+| `Waffle\Commons\Console\Command\SecurityAuditCommand` | `security:audit` — audits ABAC and CSRF coverage for every registered route (`#[Voter]` / `#[RequiresCsrfToken]`). |
 | `Waffle\Commons\Console\Command\MigrateCommand` | `db:migrate` — applies pending SQL migrations through the contracts `MigrationRunnerInterface`, then resets the pool. |
 | `Waffle\Commons\Console\Command\MigrationStatusCommand` | `db:status` — lists every migration version (applied, pending or missing) with its application time and whether it has a down script (`[OPS-03]`). |
 | `Waffle\Commons\Console\Command\MigrationRollbackCommand` | `db:rollback [--steps=N]` — reverts the N most recent versions (1 by default) through their `.down.sql` scripts, after checking every one of them (`[OPS-03]`). |
