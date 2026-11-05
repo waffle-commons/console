@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace WaffleTests\Commons\Console\Compiler;
 
 use PHPUnit\Framework\Attributes\CoversClass;
+use ReflectionClass;
 use ReflectionObject;
 use RuntimeException;
 use Waffle\Commons\Console\Compiler\ContainerCompiler;
@@ -24,6 +25,7 @@ use WaffleTests\Commons\Console\Compiler\Fixture\MidService;
 use WaffleTests\Commons\Console\Compiler\Fixture\NonArrayDefinitionsContainer;
 use WaffleTests\Commons\Console\Compiler\Fixture\NullableUnionDependentService;
 use WaffleTests\Commons\Console\Compiler\Fixture\OptionalDependentService;
+use WaffleTests\Commons\Console\Compiler\Fixture\ResetCountingConsumer;
 use WaffleTests\Commons\Console\Compiler\Fixture\ResetCountingService;
 use WaffleTests\Commons\Console\Compiler\Fixture\ResettableLeafService;
 use WaffleTests\Commons\Console\Compiler\Fixture\RootService;
@@ -133,10 +135,10 @@ final class ContainerCompilerTest extends AbstractTestCase
         static::assertSame($runtimeSignature, $compiledSignature);
 
         // Sanity: the deepest path resolved to the right concrete classes.
-        static::assertSame(RootService::class, $compiledSignature[RootService::class]['fqcn']);
+        static::assertSame(RootService::class, $compiledSignature[RootService::class]['fqcn'] ?? null);
         static::assertSame(
             Greeter::class,
-            $compiledSignature[GreeterInterface::class]['fqcn'],
+            $compiledSignature[GreeterInterface::class]['fqcn'] ?? null,
             'interface id must resolve to its bound concrete in the compiled graph',
         );
     }
@@ -149,16 +151,14 @@ final class ContainerCompilerTest extends AbstractTestCase
         // (the pre-fix compiler emitted a bare get() that would have thrown).
         $runtime = new FakeRuntimeContainer();
         $this->seed($runtime);
-        $runtimeService = $runtime->get(OptionalDependentService::class);
-        static::assertInstanceOf(OptionalDependentService::class, $runtimeService);
+        $runtimeService = self::serviceOf($runtime, OptionalDependentService::class, OptionalDependentService::class);
         static::assertNull($runtimeService->optional, 'baseline: Autowire resolves the unbound nullable dep to null');
 
         $input = new FakeRuntimeContainer();
         $this->seed($input);
         $compiled = $this->loadCompiledContainer($input, 'OptionalNullable');
 
-        $compiledService = $compiled->get(OptionalDependentService::class);
-        static::assertInstanceOf(OptionalDependentService::class, $compiledService);
+        $compiledService = self::serviceOf($compiled, OptionalDependentService::class, OptionalDependentService::class);
         static::assertNull(
             $compiledService->optional,
             'compiled container must mirror Autowire and inject null for the unregistered nullable dep',
@@ -172,8 +172,7 @@ final class ContainerCompilerTest extends AbstractTestCase
         // the registered SECOND member, not unconditionally resolve the first.
         $runtime = new FakeRuntimeContainer();
         $this->seed($runtime);
-        $runtimeService = $runtime->get(UnionDependentService::class);
-        static::assertInstanceOf(UnionDependentService::class, $runtimeService);
+        $runtimeService = self::serviceOf($runtime, UnionDependentService::class, UnionDependentService::class);
         static::assertInstanceOf(
             SecondUnionService::class,
             $runtimeService->dependency,
@@ -184,8 +183,7 @@ final class ContainerCompilerTest extends AbstractTestCase
         $this->seed($input);
         $compiled = $this->loadCompiledContainer($input, 'UnionSecond');
 
-        $compiledService = $compiled->get(UnionDependentService::class);
-        static::assertInstanceOf(UnionDependentService::class, $compiledService);
+        $compiledService = self::serviceOf($compiled, UnionDependentService::class, UnionDependentService::class);
         static::assertInstanceOf(
             SecondUnionService::class,
             $compiledService->dependency,
@@ -201,16 +199,14 @@ final class ContainerCompilerTest extends AbstractTestCase
         // branches of the union emission.
         $runtime = new FakeRuntimeContainer();
         $this->seed($runtime);
-        $runtimeService = $runtime->get(UnionDefaultService::class);
-        static::assertInstanceOf(UnionDefaultService::class, $runtimeService);
+        $runtimeService = self::serviceOf($runtime, UnionDefaultService::class, UnionDefaultService::class);
         static::assertSame(7, $runtimeService->value, 'baseline: Autowire falls back to the union default');
 
         $input = new FakeRuntimeContainer();
         $this->seed($input);
         $compiled = $this->loadCompiledContainer($input, 'UnionDefault');
 
-        $compiledService = $compiled->get(UnionDefaultService::class);
-        static::assertInstanceOf(UnionDefaultService::class, $compiledService);
+        $compiledService = self::serviceOf($compiled, UnionDefaultService::class, UnionDefaultService::class);
         static::assertSame(
             7,
             $compiledService->value,
@@ -224,8 +220,8 @@ final class ContainerCompilerTest extends AbstractTestCase
         $this->seed($input);
         $compiled = $this->loadCompiledContainer($input, 'Singletons');
 
-        $a = $compiled->get(RootService::class);
-        $b = $compiled->get(RootService::class);
+        $a = self::serviceOf($compiled, RootService::class, RootService::class);
+        $b = self::serviceOf($compiled, RootService::class, RootService::class);
         static::assertSame($a, $b, 'compiled get() must memoise singletons');
     }
 
@@ -244,11 +240,11 @@ final class ContainerCompilerTest extends AbstractTestCase
         $this->seed($input);
         $compiled = $this->loadCompiledContainer($input, 'Reset');
 
-        $service = $compiled->get(ResettableLeafService::class);
-        static::assertInstanceOf(ResettableLeafService::class, $service);
+        $service = self::serviceOf($compiled, ResettableLeafService::class, ResettableLeafService::class);
         $service->touch();
         $service->touch();
-        static::assertSame(2, $service->touches);
+        $touched = $service->touches;
+        static::assertSame(2, $touched);
 
         $compiled->reset();
         static::assertSame(0, $service->touches, 'reset() must cascade to inlined resettable singletons');
@@ -266,9 +262,9 @@ final class ContainerCompilerTest extends AbstractTestCase
         $this->seed($input);
         $compiled = $this->loadCompiledContainer($input, 'ResetIdentity');
 
-        $before = $compiled->get(ResettableLeafService::class);
+        $before = self::serviceOf($compiled, ResettableLeafService::class, ResettableLeafService::class);
         $compiled->reset();
-        $after = $compiled->get(ResettableLeafService::class);
+        $after = self::serviceOf($compiled, ResettableLeafService::class, ResettableLeafService::class);
 
         static::assertSame($before, $after, 'reset() must not evict inlined singletons from the compiled memo');
     }
@@ -315,25 +311,24 @@ final class ContainerCompilerTest extends AbstractTestCase
 
         $compiled = $this->loadCompiledContainer($input, 'ResetOnce');
 
-        $inlined = $compiled->get(ResetCountingService::class);
-        static::assertInstanceOf(ResetCountingService::class, $inlined);
+        $inlined = self::serviceOf($compiled, ResetCountingService::class, ResetCountingService::class);
         static::assertSame($passthrough, $compiled->get('passthrough.resettable'));
 
         // The compiled memo holds ONLY the inlined id — never the passthrough.
-        $memo = $this->memoOf($compiled);
-        static::assertArrayHasKey(ResetCountingService::class, $memo);
-        static::assertArrayNotHasKey('passthrough.resettable', $memo);
+        $memo = $this->memoKeysOf($compiled);
+        static::assertContains(ResetCountingService::class, $memo);
+        static::assertNotContains('passthrough.resettable', $memo);
 
         $compiled->reset();
 
         static::assertSame(1, $passthrough->resets, 'passthrough must reset exactly once (runtime cascade only)');
-        static::assertSame(1, $inlined->resets, 'inlined service must reset exactly once (compiled cascade only)');
+        static::assertSame(1, $inlined->resets, 'inlined service must reset exactly once (runtime cascade only)');
 
         // SEC-04: reset() never evicts — the inlined id survives in the memo with
         // its identity intact, and the passthrough still is not there.
-        $memoAfterReset = $this->memoOf($compiled);
-        static::assertArrayHasKey(ResetCountingService::class, $memoAfterReset);
-        static::assertArrayNotHasKey('passthrough.resettable', $memoAfterReset);
+        $memoAfterReset = $this->memoKeysOf($compiled);
+        static::assertContains(ResetCountingService::class, $memoAfterReset);
+        static::assertNotContains('passthrough.resettable', $memoAfterReset);
         static::assertSame($inlined, $compiled->get(ResetCountingService::class));
     }
 
@@ -360,6 +355,11 @@ final class ContainerCompilerTest extends AbstractTestCase
             'the guard must delegate non-inlined ids with an immediate return (no memoisation)',
         );
         static::assertStringNotContainsString('default =>', $source, 'the match must not have a passthrough arm');
+        static::assertStringContainsString(
+            '$instance = $this->runtime->memoise($id, fn(): object => match ($id) {',
+            $source,
+            'an inlined id must be built through the runtime container memo (CARRY-06)',
+        );
 
         // Guard first, memo lookup second: the delegate path cannot touch the memo.
         $memoAt = strpos($source, 'array_key_exists($id, $this->instances)');
@@ -400,12 +400,94 @@ final class ContainerCompilerTest extends AbstractTestCase
             'compiled and interpreted reset cascades must be identical per service',
         );
         // Sanity: exactly one reset per cycle for every resettable variant.
-        static::assertSame(5, $compiledCounts[ResetCountingService::class]);
-        static::assertSame(5, $compiledCounts['factory.resettable']);
+        static::assertSame(5, $compiledCounts[ResetCountingService::class] ?? null);
+        static::assertSame(5, $compiledCounts['factory.resettable'] ?? null);
         static::assertSame(5, $compiledCounts['prebuilt.resettable']);
         static::assertNull($compiledCounts[LeafService::class]);
         static::assertNull($compiledCounts['factory.plain']);
         static::assertNull($compiledCounts['prebuilt.plain']);
+    }
+
+    public function testAnInlinedServiceTheRuntimeBuiltFirstIsTheOneTheCompiledGetReturns(): void
+    {
+        // CARRY-06: a closure factory resolving an INLINED id goes through the runtime,
+        // which builds it by reflection. The compiled get() used to build a second
+        // instance next to it (the accepted beta6 constraint); it now adopts the
+        // runtime's through memoise().
+        $input = new FakeRuntimeContainer();
+        $this->seed($input);
+        $input->set('needs.leaf', static fn(ContainerInterface $c): object => self::objectOf($c, LeafService::class));
+        $compiled = $this->loadCompiledContainer($input, 'RuntimeFirst');
+
+        $viaRuntime = self::objectOf($compiled, 'needs.leaf');
+
+        static::assertSame($viaRuntime, $compiled->get(LeafService::class));
+    }
+
+    public function testAnInlinedServiceTheCompiledGetBuiltFirstIsTheOneTheRuntimeReturns(): void
+    {
+        $input = new FakeRuntimeContainer();
+        $this->seed($input);
+        $input->set('needs.leaf', static fn(ContainerInterface $c): object => self::objectOf($c, LeafService::class));
+        $compiled = $this->loadCompiledContainer($input, 'CompiledFirst');
+
+        $viaCompiled = self::objectOf($compiled, LeafService::class);
+
+        static::assertSame(
+            $viaCompiled,
+            $compiled->get('needs.leaf'),
+            'a closure resolving the id gets the compiled instance',
+        );
+        static::assertSame($viaCompiled, $input->get(LeafService::class), 'the runtime holds the compiled instance');
+    }
+
+    public function testAnInlinedServiceReachedThroughBothPathsResetsOnce(): void
+    {
+        // The compiled get() inlines the counter; the runtime autowires a consumer of it
+        // (unregistered, so a passthrough). One instance, so the runtime cascade, the only
+        // one, resets it once.
+        $input = new FakeRuntimeContainer();
+        $input->set(ResetCountingService::class, ResetCountingService::class);
+        $compiled = $this->loadCompiledContainer($input, 'SharedResetOnce');
+
+        $inlined = self::serviceOf($compiled, ResetCountingService::class, ResetCountingService::class);
+        $consumer = self::serviceOf($compiled, ResetCountingConsumer::class, ResetCountingConsumer::class);
+        static::assertSame($inlined, $consumer->counter);
+
+        $compiled->reset();
+
+        static::assertSame(1, $inlined->resets, 'one instance, reset once, by the runtime cascade');
+    }
+
+    public function testCompilingAgainstARuntimeWithoutMemoiseThrows(): void
+    {
+        $input = new FakeRuntimeContainer();
+        $this->seed($input);
+
+        $this->expectException(CompilerException::class);
+        $this->expectExceptionMessage('memoise(string $id, Closure $build)');
+
+        new ContainerCompiler()->compile(
+            $input,
+            'WaffleTests\\Commons\\Console\\Compiler\\Generated',
+            'CompiledWithoutMemoise',
+            NonArrayDefinitionsContainer::class,
+        );
+    }
+
+    public function testARuntimeWithoutMemoiseCompilesWhenNothingIsInlined(): void
+    {
+        $input = new FakeRuntimeContainer();
+        $input->set('only.factory', static fn(): LeafService => new LeafService());
+
+        $source = new ContainerCompiler()->compile(
+            $input,
+            'WaffleTests\\Commons\\Console\\Compiler\\Generated',
+            'CompiledDelegateOnly',
+            NonArrayDefinitionsContainer::class,
+        );
+
+        static::assertStringNotContainsString('->memoise(', $source);
     }
 
     public function testCompilingAContainerWithoutDefinitionsMapThrows(): void
@@ -460,8 +542,7 @@ final class ContainerCompilerTest extends AbstractTestCase
 
         // get() delegates: identity matches the runtime container exactly, and the
         // second get() returns the SAME instance (memoised by the runtime, not here).
-        $first = $compiled->get('only.factory');
-        static::assertInstanceOf(LeafService::class, $first);
+        $first = self::serviceOf($compiled, 'only.factory', LeafService::class);
         static::assertSame($first, $compiled->get('only.factory'));
         static::assertSame($input->get('only.factory'), $first);
         static::assertSame($prebuilt, $compiled->get('prebuilt.resettable'));
@@ -537,8 +618,7 @@ final class ContainerCompilerTest extends AbstractTestCase
 
         $compiled = $this->loadCompiledContainer($input, 'Variadic');
 
-        $service = $compiled->get(VariadicService::class);
-        static::assertInstanceOf(VariadicService::class, $service);
+        $service = self::serviceOf($compiled, VariadicService::class, VariadicService::class);
         static::assertInstanceOf(LeafService::class, $service->leaf);
         static::assertSame([], $service->tags, 'the variadic tail is left empty by the compiled wiring');
     }
@@ -550,16 +630,18 @@ final class ContainerCompilerTest extends AbstractTestCase
         // emission and at runtime.
         $runtime = new FakeRuntimeContainer();
         $runtime->set(BuiltinUnionDefaultService::class, BuiltinUnionDefaultService::class);
-        $runtimeService = $runtime->get(BuiltinUnionDefaultService::class);
-        static::assertInstanceOf(BuiltinUnionDefaultService::class, $runtimeService);
+        $runtimeService = self::serviceOf(
+            $runtime,
+            BuiltinUnionDefaultService::class,
+            BuiltinUnionDefaultService::class,
+        );
         static::assertSame(42, $runtimeService->value, 'baseline: Autowire uses the builtin-union default');
 
         $input = new FakeRuntimeContainer();
         $input->set(BuiltinUnionDefaultService::class, BuiltinUnionDefaultService::class);
         $compiled = $this->loadCompiledContainer($input, 'BuiltinUnion');
 
-        $service = $compiled->get(BuiltinUnionDefaultService::class);
-        static::assertInstanceOf(BuiltinUnionDefaultService::class, $service);
+        $service = self::serviceOf($compiled, BuiltinUnionDefaultService::class, BuiltinUnionDefaultService::class);
         static::assertSame(42, $service->value, 'compiled wiring must fall back to the builtin-union default');
     }
 
@@ -601,16 +683,14 @@ final class ContainerCompilerTest extends AbstractTestCase
         $runtime = new FakeRuntimeContainer();
         $runtime->set(LeafService::class, LeafService::class);
         $runtime->set(ScalarDefaultsService::class, ScalarDefaultsService::class);
-        $runtimeService = $runtime->get(ScalarDefaultsService::class);
-        static::assertInstanceOf(ScalarDefaultsService::class, $runtimeService);
+        $runtimeService = self::serviceOf($runtime, ScalarDefaultsService::class, ScalarDefaultsService::class);
 
         $input = new FakeRuntimeContainer();
         $input->set(LeafService::class, LeafService::class);
         $input->set(ScalarDefaultsService::class, ScalarDefaultsService::class);
         $compiled = $this->loadCompiledContainer($input, 'ScalarDefaults');
 
-        $service = $compiled->get(ScalarDefaultsService::class);
-        static::assertInstanceOf(ScalarDefaultsService::class, $service);
+        $service = self::serviceOf($compiled, ScalarDefaultsService::class, ScalarDefaultsService::class);
         static::assertNull($service->maybe, 'null default must round-trip');
         static::assertTrue($service->flag, 'bool default must round-trip');
         static::assertSame(3, $service->count, 'int default must round-trip');
@@ -657,21 +737,21 @@ final class ContainerCompilerTest extends AbstractTestCase
     }
 
     /**
-     * Reads a compiled container's private `$instances` memo by reflection.
+     * The ids a compiled container's private `$instances` memo holds, read by reflection.
      *
-     * @return array<string, mixed>
+     * @return list<array-key>
      */
-    private function memoOf(CompiledContainerInterface $compiled): array
+    private function memoKeysOf(CompiledContainerInterface $compiled): array
     {
-        $memo = new ReflectionObject($compiled)
+        // The property is read untyped: it is kept in a one-element list and narrowed in place.
+        $memo = [new ReflectionObject($compiled)
             ->getProperty('instances')
-            ->getValue($compiled);
-        if (!is_array($memo)) {
+            ->getValue($compiled)];
+        if (!is_array($memo[0])) {
             static::fail('the compiled memo must be an array');
         }
 
-        /** @var array<string, mixed> $memo */
-        return $memo;
+        return array_keys($memo[0]);
     }
 
     /**
@@ -716,14 +796,14 @@ final class ContainerCompilerTest extends AbstractTestCase
     {
         $first = [];
         foreach ($this->parityIds() as $id) {
-            $first[$id] = $container->get($id);
+            $first[$id] = self::objectOf($container, $id);
         }
 
         for ($cycle = 0; $cycle < $cycles; $cycle++) {
             $container->reset();
             foreach ($this->parityIds() as $id) {
                 static::assertSame(
-                    $first[$id],
+                    $first[$id] ?? null,
                     $container->get($id),
                     sprintf('"%s" must keep its identity across reset cycles', $id),
                 );
@@ -750,8 +830,7 @@ final class ContainerCompilerTest extends AbstractTestCase
     {
         $signature = [];
         foreach ($ids as $id) {
-            $instance = $container->get($id);
-            $signature[$id] = $this->describe($instance);
+            $signature[$id] = $this->describe($container->get($id));
         }
 
         return $signature;
@@ -769,10 +848,10 @@ final class ContainerCompilerTest extends AbstractTestCase
         $reflection = new ReflectionObject($instance);
         $args = [];
         foreach ($reflection->getProperties() as $property) {
-            $value = $property->getValue($instance);
-            $args[$property->getName()] = is_object($value)
-                ? $this->describe($value)
-                : ['fqcn' => get_debug_type($value), 'args' => []];
+            $value = [$property->getValue($instance)];
+            $args[$property->getName()] = is_object($value[0])
+                ? $this->describe($value[0])
+                : ['fqcn' => get_debug_type($value[0]), 'args' => []];
         }
 
         return ['fqcn' => $instance::class, 'args' => $args];
@@ -798,9 +877,36 @@ final class ContainerCompilerTest extends AbstractTestCase
         // The generated container composes the SAME (already-seeded) runtime
         // container the compiler inspected — its closures/objects live there.
         $fqcn = $namespace . '\\' . $className;
-        $instance = new $fqcn($input);
-        static::assertInstanceOf(CompiledContainerInterface::class, $instance);
+        if (!is_a($fqcn, CompiledContainerInterface::class, true)) {
+            static::fail(sprintf('%s is not a compiled container.', $fqcn));
+        }
 
-        return $instance;
+        return new ReflectionClass($fqcn)->newInstance($input);
+    }
+
+    /**
+     * The service `$id`, asserted to be a `$class`: PSR-11's get() returns it untyped.
+     *
+     * @template T of object
+     *
+     * @param class-string<T> $class
+     *
+     * @return T
+     */
+    private static function serviceOf(ContainerInterface $container, string $id, string $class): object
+    {
+        $service = [$container->get($id)];
+        static::assertInstanceOf($class, $service[0]);
+
+        return $service[0];
+    }
+
+    /** The service `$id`, asserted to be an object. */
+    private static function objectOf(ContainerInterface $container, string $id): object
+    {
+        $service = [$container->get($id)];
+        static::assertIsObject($service[0]);
+
+        return $service[0];
     }
 }

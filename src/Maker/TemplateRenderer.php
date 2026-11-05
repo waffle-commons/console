@@ -33,7 +33,7 @@ final readonly class TemplateRenderer
                     $indent = $matches[1] ?? '';
 
                     // Step 4: Propagate indentation to every subsequent line if the replacement is multiline
-                    $valStr = (string) $value;
+                    $valStr = $value;
                     if (str_contains($valStr, "\n")) {
                         $replacementLines = explode("\n", $valStr);
                         $firstLine = array_shift($replacementLines);

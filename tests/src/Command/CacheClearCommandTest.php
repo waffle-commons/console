@@ -60,6 +60,6 @@ final class CacheClearCommandTest extends AbstractTestCase
 
         static::assertSame(ExitCode::FAILURE->value, $exit);
         static::assertNotEmpty($output->errors());
-        static::assertStringContainsString('redis down', $output->errors()[0]);
+        static::assertStringContainsString('redis down', $output->errors()[0] ?? '');
     }
 }

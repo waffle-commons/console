@@ -89,6 +89,6 @@ final class MigrateCommandTest extends AbstractTestCase
 
         static::assertSame(ExitCode::FAILURE->value, $exit);
         static::assertNotEmpty($output->errors());
-        static::assertStringContainsString('migration boom', $output->errors()[0]);
+        static::assertStringContainsString('migration boom', $output->errors()[0] ?? '');
     }
 }

@@ -15,6 +15,9 @@ final class ScalarDefaultsService
     /** @var array<string, int> */
     public array $options;
 
+    /**
+     * @param array<string, int> $options
+     */
     public function __construct(
         public LeafService $leaf,
         public ?int $maybe = null,

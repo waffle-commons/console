@@ -22,7 +22,7 @@ final class SensitiveComparisonAuditCommandTest extends AbstractTestCase
     #[\Override]
     protected function setUp(): void
     {
-        $this->dir = APP_ROOT . '/var/compare-audit-cmd-' . bin2hex(random_bytes(4));
+        $this->dir = dirname(__DIR__, 3) . '/var/compare-audit-cmd-' . bin2hex(random_bytes(4));
         if (!is_dir($this->dir)) {
             mkdir($this->dir, 0o755, true);
         }

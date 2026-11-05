@@ -34,7 +34,7 @@ use Waffle\Commons\Contracts\Service\ResettableInterface;
  */
 final class FakeRuntimeContainer implements ContainerInterface
 {
-    /** @var array<string, mixed> */
+    /** @var array<string, object> */
     private array $instances = [];
 
     /** @var array<string, string|Closure|object|callable> */
@@ -54,13 +54,28 @@ final class FakeRuntimeContainer implements ContainerInterface
             throw new RuntimeException(sprintf('Service "%s" not found.', $id));
         }
 
+        return $this->memoise($id, fn(): object => $this->build($id));
+    }
+
+    /**
+     * Mirrors `Container::memoise()`: the held instance, else `$build`'s, memoised under the
+     * circular-dependency guard. The compiled `get()` builds its inlined services through it.
+     *
+     * @param Closure(): object $build
+     */
+    public function memoise(string $id, Closure $build): object
+    {
+        if (array_key_exists($id, $this->instances)) {
+            return $this->instances[$id];
+        }
+
         if (array_key_exists($id, $this->resolving)) {
             throw new RuntimeException(sprintf('Circular dependency on "%s".', $id));
         }
 
         $this->resolving[$id] = true;
         try {
-            $instance = $this->build($id);
+            $instance = $build();
             $this->instances[$id] = $instance;
         } finally {
             unset($this->resolving[$id]);
@@ -96,12 +111,18 @@ final class FakeRuntimeContainer implements ContainerInterface
         }
     }
 
-    private function build(string $id): mixed
+    private function build(string $id): object
     {
         $concrete = $this->definitions[$id] ?? $id;
 
         if ($concrete instanceof Closure) {
-            return $concrete($this);
+            // A factory's result is untyped: it is kept in a one-element list and narrowed in place.
+            $built = [$concrete($this)];
+            if (!is_object($built[0])) {
+                throw new RuntimeException(sprintf('The factory of "%s" built no object.', $id));
+            }
+
+            return $built[0];
         }
         if (is_object($concrete)) {
             return $concrete;
@@ -113,7 +134,10 @@ final class FakeRuntimeContainer implements ContainerInterface
         throw new RuntimeException(sprintf('Service "%s" not found.', $id));
     }
 
-    private function autowire(string $class): mixed
+    /**
+     * @param class-string $class
+     */
+    private function autowire(string $class): object
     {
         $reflector = new ReflectionClass($class);
         $constructor = $reflector->getConstructor();
@@ -171,7 +195,12 @@ final class FakeRuntimeContainer implements ContainerInterface
             ));
         }
 
-        return $reflector->newInstanceArgs($dependencies);
+        return (
+            $reflector->newInstanceArgs($dependencies) ?? throw new RuntimeException(sprintf(
+                'Could not instantiate "%s".',
+                $class,
+            ))
+        );
     }
 
     /**

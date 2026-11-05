@@ -1,0 +1,5 @@
+-- {{ VERSION }} (up): applied by `bin/waffle db:migrate`, inside its own transaction.
+-- Write the schema change below; a file holding only comments is refused, never logged.
+-- MySQL, MariaDB and Oracle commit each DDL statement at once: keep one schema change
+-- per file there, so that a failure stays recoverable.
+

@@ -20,7 +20,7 @@ final class MemoryAuditCommandTest extends AbstractTestCase
     #[\Override]
     protected function setUp(): void
     {
-        $this->root = APP_ROOT . '/var/igor-audit-test-' . bin2hex(random_bytes(4));
+        $this->root = dirname(__DIR__, 3) . '/var/igor-audit-test-' . bin2hex(random_bytes(4));
         if (!is_dir($this->root)) {
             mkdir($this->root, 0o755, true);
         }
@@ -51,7 +51,10 @@ final class MemoryAuditCommandTest extends AbstractTestCase
     public function testMissingScriptReturnsNoInput(): void
     {
         $runner = new FakeAuditRunner();
-        $command = new MemoryAuditCommand($runner, APP_ROOT . '/var/does-not-exist-' . bin2hex(random_bytes(4)));
+        $command = new MemoryAuditCommand(
+            $runner,
+            dirname(__DIR__, 3) . '/var/does-not-exist-' . bin2hex(random_bytes(4)),
+        );
         $output = new NullOutput();
 
         $exit = $command->execute(new ArgvInput([]), $output);

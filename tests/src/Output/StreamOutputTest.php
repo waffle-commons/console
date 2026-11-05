@@ -80,8 +80,14 @@ final class StreamOutputTest extends AbstractTestCase
 
     public function testInvalidStreamsThrow(): void
     {
+        $closed = fopen('php://memory', 'r');
+        if ($closed === false) {
+            static::fail('php://memory must open.');
+        }
+        fclose($closed);
+
         $this->expectException(RuntimeException::class);
-        new StreamOutput(false, false); // @phpstan-ignore-line
+        new StreamOutput($closed, $closed);
     }
 
     public function testWriteRespectsVerbosityThreshold(): void

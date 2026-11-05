@@ -5,6 +5,43 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Released in lockstep with the Waffle Commons umbrella tag.
 
+## [0.1.0-beta7] — 2026-11
+
+**Theme: `queue:work`, the migration lifecycle commands and one instance per service in AOT mode.**
+
+### Changed
+- **Mago analyzes the whole component with no ignore list.** The Beta-0 list silenced 56 analyzer codes in `src/` and `tests/` and hid 128 findings, now fixed natively: redundant casts, untyped JSON and reflection values (kept in one-element lists and narrowed in place: `Maker\Psr4Roots` reads `autoload.psr-4`, the container compiler keeps only class-name definitions), possibly-missing indexes, typed test doubles. The makers no longer call `bindArgumentNames()` through the `InputInterface` contract, which lacks it: `AbstractMakerCommand::bindArgumentNames()` binds positional names on the argv parser and leaves any other input, already named, as it is.
+- **One instance per service in AOT mode (CARRY-06).** The compiled container's `get()` builds the services it inlines through the runtime container's `memoise()` (`waffle-commons/container` 0.1.0-beta7) and keeps its own memo as a fast path. A closure factory or an autowired service that resolves the same id through the runtime now gets the same instance. Before, it built a second one: Beta-6 accepted that as a known constraint. `reset()` only delegates now: the runtime's cascade resets each service once. The compiler refuses a runtime container class that lacks `memoise()` when any definition is inlinable. Artefacts compiled before this change keep their old behaviour until `container:compile` runs again.
+
+### Added
+- **`queue:work` ([QUEUE-02]).** `Command\QueueWorkCommand` runs the queue worker against contracts only
+  (`QueueConsumerInterface`, `FailedMessageStoreInterface`, `MessageHandlerInterface`, `ResettableInterface`, the
+  PSR-20 clock, a PSR-3 logger, the tracer and the propagator); the application wires the driver in `bin/waffle`.
+  It retries with an exponential back-off, dead-letters a message with its full envelope after the last attempt,
+  resets the container after every message, recycles on a message count or a memory ceiling, drains on SIGTERM and
+  SIGINT through `pcntl`, and runs each message in a consumer span that continues the dispatcher's trace.
+  `Queue\WorkerOptions` reads and bounds its options (`--queue`, `--max-messages`, `--memory-limit`,
+  `--max-attempts`, `--backoff`, `--wait`).
+- The command carries no class-level `#[WorkerSafe(scope: 'cli')]`: unlike the one-shot commands, one invocation
+  handles thousands of messages. It is stateless (`final readonly`) instead.
+- Its tests send a real SIGTERM and SIGINT to the test process to prove the drain.
+- **Migration lifecycle ([OPS-03]).** `Command\MigrationStatusCommand` (`db:status`) lists every version found on
+  disk or in the migration log as applied, pending or missing, with its application time and whether it has a down
+  script. `Command\MigrationRollbackCommand` (`db:rollback [--steps=N]`) reverts the N most recent versions, 1 by
+  default; a `--steps` that is not a whole number of at least 1 exits 64 (usage) before the database is touched.
+  Both depend on contracts only (`MigrationRunnerInterface`, `ResettableInterface`) and reset the pool on the way
+  out, like `db:migrate`.
+- `Maker\Command\MakeMigrationCommand` (`make:migration <Name>`) writes `Version<YYYYMMDD><NN>_<Name>.sql` and its
+  `.down.sql` into the migrations directory (the `$migrationsPath` the application passes, or `--target=`): the date
+  comes from the injected PSR-20 clock, NN is the day's next free number (01 to 99). Both files hold only comments,
+  which the runner refuses, so an unedited file is never logged.
+- `AbstractMakerCommand::writeTextFile()`: the same atomic write as `writeFile()`, without the `php -l` check, for
+  output that is not PHP source.
+
+### Dependencies
+- `psr/clock` and `psr/log` are direct requirements. `ext-pcntl` is suggested: without it, a signal stops the worker
+  at once, and the message in flight is delivered again once the queue reclaims it.
+
 ## [0.1.0-beta6] — 2026-09
 
 **Theme: code-generation and AOT hardening.**
